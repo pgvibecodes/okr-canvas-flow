@@ -1,17 +1,20 @@
+
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit, Check } from 'lucide-react';
+import { Plus, Edit, Check, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { Progress } from '@/components/ui/progress';
 
 const ObjectiveNode = ({ id, data }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || 'New Objective');
   const [description, setDescription] = useState(data.description || '');
   const reactFlow = useReactFlow();
+  const progress = data.progress || 0;
 
   const addKeyResult = useCallback(() => {
     // Find the current node position
@@ -49,6 +52,48 @@ const ObjectiveNode = ({ id, data }) => {
       id: `edge-${id}-${keyResultId}`,
       source: id,
       target: keyResultId,
+      type: 'smoothstep',
+      animated: false,
+      style: { stroke: '#6366f1', strokeWidth: 2 },
+    });
+  }, [id, reactFlow]);
+
+  const addSubObjective = useCallback(() => {
+    // Find the current node position
+    const node = reactFlow.getNode(id);
+    if (!node) return;
+
+    // Calculate position for new sub-objective
+    const position = {
+      x: node.position.x + 400,
+      y: node.position.y + 100,
+    };
+
+    // Generate a unique ID for the sub-objective
+    const subObjectiveId = `objective-${uuidv4()}`;
+    
+    // Create the sub-objective node
+    reactFlow.addNodes({
+      id: subObjectiveId,
+      type: 'objective',
+      position,
+      data: { 
+        label: 'New Sub-Objective', 
+        description: 'Click to edit',
+        progress: 0,
+      },
+      style: {
+        width: 260,
+        background: '#f0f9ff',
+        borderColor: '#3b82f6',
+      },
+    });
+
+    // Create the edge connecting objective to sub-objective
+    reactFlow.addEdges({
+      id: `edge-${id}-${subObjectiveId}`,
+      source: id,
+      target: subObjectiveId,
       type: 'smoothstep',
       animated: false,
       style: { stroke: '#6366f1', strokeWidth: 2 },
@@ -116,17 +161,34 @@ const ObjectiveNode = ({ id, data }) => {
             className="min-h-[60px] text-sm"
           />
         ) : (
-          <p className="text-sm text-gray-600">{description}</p>
+          <>
+            <p className="text-sm text-gray-600">{description}</p>
+            <div className="mt-3 space-y-1">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Progress</span>
+                <span>{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+          </>
         )}
       </CardContent>
-      <CardFooter className="p-3 pt-0 flex justify-end">
+      <CardFooter className="p-3 pt-0 flex justify-between">
+        <Button 
+          onClick={addSubObjective}
+          size="sm" 
+          variant="outline"
+          className="text-xs flex items-center gap-1"
+        >
+          <Plus className="h-3 w-3" /> Sub-Objective
+        </Button>
         <Button 
           onClick={addKeyResult}
           size="sm" 
           variant="outline"
           className="text-xs flex items-center gap-1"
         >
-          <Plus className="h-3 w-3" /> Add Key Result
+          <Plus className="h-3 w-3" /> Key Result
         </Button>
       </CardFooter>
 

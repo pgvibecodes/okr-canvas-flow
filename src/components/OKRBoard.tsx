@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   ReactFlow, 
   Background, 
@@ -8,7 +8,8 @@ import {
   addEdge,
   Panel,
   ConnectionLineType,
-  MarkerType
+  MarkerType,
+  NodeMouseHandler
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toast } from 'sonner';
@@ -30,18 +31,65 @@ const OKRBoard = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  
+  // Calculate and update objective progress based on connected key results
+  useEffect(() => {
+    setNodes((nds) => {
+      return nds.map(node => {
+        // Only process objectives
+        if (node.type !== 'objective') return node;
+        
+        // Find all key results connected to this objective
+        const connectedKeyResults = edges
+          .filter(edge => 
+            (edge.source === node.id && nds.find(n => n.id === edge.target)?.type === 'keyResult') || 
+            (edge.target === node.id && nds.find(n => n.id === edge.source)?.type === 'keyResult')
+          )
+          .map(edge => {
+            const keyResultId = edge.source === node.id ? edge.target : edge.source;
+            return nds.find(n => n.id === keyResultId);
+          })
+          .filter(kr => kr !== undefined);
+        
+        // If no key results, keep current progress
+        if (connectedKeyResults.length === 0) return node;
+        
+        // Calculate average progress of connected key results
+        const totalProgress = connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0);
+        const avgProgress = Math.round(totalProgress / connectedKeyResults.length);
+        
+        // Update objective progress
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            progress: avgProgress
+          }
+        };
+      });
+    });
+  }, [edges, setNodes]);
 
   const onConnect = useCallback(
     (params) => {
-      // Only allow connections from objectives to key results or vice versa
+      // Get source and target nodes
       const sourceNode = nodes.find(node => node.id === params.source);
       const targetNode = nodes.find(node => node.id === params.target);
       
       if (!sourceNode || !targetNode) return;
       
-      // Prevent connecting nodes of the same type
-      if (sourceNode.type === targetNode.type) {
-        toast.error('Cannot connect nodes of the same type');
+      // Allow connections between:
+      // 1. Objective to Key Result
+      // 2. Key Result to Objective
+      // 3. Objective to Objective (new feature)
+      const isValidConnection = (
+        (sourceNode.type === 'objective' && targetNode.type === 'keyResult') ||
+        (sourceNode.type === 'keyResult' && targetNode.type === 'objective') ||
+        (sourceNode.type === 'objective' && targetNode.type === 'objective')
+      );
+      
+      if (!isValidConnection) {
+        toast.error('Invalid connection type');
         return;
       }
       
@@ -54,6 +102,8 @@ const OKRBoard = () => {
           markerEnd: { type: MarkerType.ArrowClosed },
         }, eds)
       );
+      
+      toast.success('Connection created');
     },
     [nodes, setEdges]
   );
@@ -79,6 +129,7 @@ const OKRBoard = () => {
         data: { 
           label: 'New Objective', 
           description: 'Click to edit',
+          progress: 0,
         },
         style: {
           width: 260,
@@ -148,6 +199,25 @@ const OKRBoard = () => {
     },
     [nodes, edges, setNodes, setEdges]
   );
+  
+  // Add handler for node deletion
+  const onNodeDoubleClick = useCallback(
+    (_, node) => {
+      // Ask for confirmation before deletion
+      if (window.confirm(`Delete this ${node.type}?`)) {
+        // Remove the node
+        setNodes((nds) => nds.filter((n) => n.id !== node.id));
+        
+        // Remove any connected edges
+        setEdges((eds) => eds.filter(
+          (e) => e.source !== node.id && e.target !== node.id
+        ));
+        
+        toast.success(`${node.type === 'objective' ? 'Objective' : 'Key Result'} deleted`);
+      }
+    },
+    [setNodes, setEdges]
+  );
 
   const handleCanvasClick = useCallback(
     (event) => {
@@ -176,6 +246,7 @@ const OKRBoard = () => {
         onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         onClick={handleCanvasClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'smoothstep',
@@ -188,7 +259,7 @@ const OKRBoard = () => {
         <Background gap={16} color="#f1f5f9" />
         <Panel position="top-center" className="bg-white rounded-lg shadow-lg p-2">
           <div className="text-sm text-gray-500 flex items-center space-x-2">
-            <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective.</p>
+            <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective. Double-click to delete.</p>
           </div>
         </Panel>
         <FloatingActionBar onAddObjective={addNewObjective} />
