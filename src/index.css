@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,40 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* React Flow Custom Styles */
+.react-flow__node {
+  @apply transition-shadow;
+}
+
+.react-flow__node:hover {
+  @apply shadow-lg;
+}
+
+.react-flow__handle {
+  @apply transition-all duration-200;
+}
+
+.react-flow__handle:hover {
+  @apply scale-125;
+}
+
+/* Add custom drag handle styles */
+.custom-drag-handle {
+  @apply cursor-move absolute top-2 right-2 w-4 h-4 rounded-full bg-gray-200 hover:bg-gray-300;
+}
+
+/* React Flow Panel styles */
+.react-flow__panel {
+  @apply rounded-lg shadow-md;
+}
+
+/* Make controls more visible */
+.react-flow__controls {
+  @apply bg-white rounded-lg shadow-lg;
+}
+
+.react-flow__controls-button {
+  @apply border-gray-200 hover:bg-gray-100;
 }
