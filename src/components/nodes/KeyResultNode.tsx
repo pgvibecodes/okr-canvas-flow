@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,11 @@ const KeyResultNode = ({ id, data }) => {
         
         // Calculate average progress
         if (connectedKeyResults.length > 0) {
-          const totalProgress = connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0);
+          const totalProgress = connectedKeyResults.reduce((sum, kr) => {
+            // Ensure we're dealing with numbers by converting to number or using 0 as fallback
+            const krProgress = typeof kr.data.progress === 'number' ? kr.data.progress : 0;
+            return sum + krProgress;
+          }, 0);
           const avgProgress = Math.round(totalProgress / connectedKeyResults.length);
           
           // Update objective progress
@@ -123,7 +126,11 @@ const KeyResultNode = ({ id, data }) => {
           
           // Calculate average progress or set to 0 if no key results
           const avgProgress = connectedKeyResults.length > 0
-            ? Math.round(connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0) / connectedKeyResults.length)
+            ? Math.round(connectedKeyResults.reduce((sum, kr) => {
+                // Ensure we're dealing with numbers by converting to number or using 0 as fallback
+                const krProgress = typeof kr.data.progress === 'number' ? kr.data.progress : 0;
+                return sum + krProgress;
+              }, 0) / connectedKeyResults.length)
             : 0;
           
           // Update objective progress

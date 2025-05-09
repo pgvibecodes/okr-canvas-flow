@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
@@ -197,8 +196,15 @@ const ObjectiveNode = ({ id, data }) => {
     
     // Calculate average progress from key results and sub-objectives
     let totalItems = connectedKeyResults.length + subObjectives.length;
-    let totalProgress = connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0) +
-                        subObjectives.reduce((sum, so) => sum + (so.data.progress || 0), 0);
+    let totalProgress = connectedKeyResults.reduce((sum, kr) => {
+      // Ensure we're dealing with numbers by converting to number or using 0 as fallback
+      const krProgress = typeof kr.data.progress === 'number' ? kr.data.progress : 0;
+      return sum + krProgress;
+    }, 0) + subObjectives.reduce((sum, so) => {
+      // Ensure we're dealing with numbers by converting to number or using 0 as fallback
+      const soProgress = typeof so.data.progress === 'number' ? so.data.progress : 0;
+      return sum + soProgress;
+    }, 0);
     
     // Calculate average or default to 0
     const avgProgress = totalItems > 0 ? Math.round(totalProgress / totalItems) : 0;
