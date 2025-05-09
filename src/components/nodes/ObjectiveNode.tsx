@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Plus, Edit, Check } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 const ObjectiveNode = ({ id, data }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -25,7 +26,7 @@ const ObjectiveNode = ({ id, data }) => {
     };
 
     // Generate a unique ID for the key result
-    const keyResultId = `keyresult-${Math.random().toString(36).substr(2, 9)}`;
+    const keyResultId = `keyresult-${uuidv4()}`;
     
     // Create the key result node
     reactFlow.addNodes({

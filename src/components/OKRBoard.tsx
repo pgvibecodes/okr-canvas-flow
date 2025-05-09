@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import ObjectiveNode from './nodes/ObjectiveNode';
 import KeyResultNode from './nodes/KeyResultNode';
 import FloatingActionBar from './FloatingActionBar';
-import { v4 as uuidv4 } from '@xyflow/react/dist/esm/additional-components/NodeId';
+import { v4 as uuidv4 } from 'uuid';
 
 const nodeTypes = {
   objective: ObjectiveNode,
