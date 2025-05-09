@@ -119,7 +119,8 @@ const ObjectiveNode = ({ id, data }) => {
   
   const handleDelete = useCallback(() => {
     // Get the current state
-    const { nodes, edges } = reactFlow.getState();
+    const nodes = reactFlow.getNodes();
+    const edges = reactFlow.getEdges();
     
     // Find all edges connected to this node
     const connectedEdges = edges.filter(
@@ -154,11 +155,12 @@ const ObjectiveNode = ({ id, data }) => {
     
     // Update parent objective progress if this was a sub-objective
     setTimeout(() => {
-      const { edges, nodes } = reactFlow.getState();
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
       
       // For each parent, recalculate progress
       parentIds.forEach(parentId => {
-        const parentNode = nodes.find(node => node.id === parentId);
+        const parentNode = updatedNodes.find(node => node.id === parentId);
         if (!parentNode) return;
         
         // Find all connected objectives and key results
@@ -169,7 +171,8 @@ const ObjectiveNode = ({ id, data }) => {
   
   // Helper function to update objective progress
   const updateObjectiveProgress = (objectiveId) => {
-    const { edges, nodes } = reactFlow.getState();
+    const nodes = reactFlow.getNodes();
+    const edges = reactFlow.getEdges();
     
     // Find all key results connected to this objective
     const keyResultEdges = edges.filter(e => 

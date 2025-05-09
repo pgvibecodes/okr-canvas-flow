@@ -35,7 +35,9 @@ const KeyResultNode = ({ id, data }) => {
   
   // Helper function to update the progress of connected objectives
   const updateConnectedObjectives = useCallback(() => {
-    const { edges, nodes } = reactFlow.getState();
+    // Get current nodes and edges
+    const edges = reactFlow.getEdges();
+    const nodes = reactFlow.getNodes();
     
     // Find all edges where this key result is connected
     const connectedEdges = edges.filter(
@@ -78,8 +80,8 @@ const KeyResultNode = ({ id, data }) => {
   }, [id, reactFlow]);
   
   const handleDelete = useCallback(() => {
-    // Find all edges connected to this node
-    const { edges } = reactFlow.getState();
+    // Get current nodes and edges
+    const edges = reactFlow.getEdges();
     const connectedEdges = edges.filter(
       edge => edge.source === id || edge.target === id
     );
@@ -98,24 +100,25 @@ const KeyResultNode = ({ id, data }) => {
     
     // Update connected objectives after a small delay to ensure state is updated
     setTimeout(() => {
-      const { edges, nodes } = reactFlow.getState();
+      const updatedEdges = reactFlow.getEdges();
+      const updatedNodes = reactFlow.getNodes();
       
       // For each previously connected edge, find the objective
       connectedEdges.forEach(edge => {
         const objectiveId = edge.source === id ? edge.target : edge.source;
-        const objectiveNode = nodes.find(node => node.id === objectiveId && node.type === 'objective');
+        const objectiveNode = updatedNodes.find(node => node.id === objectiveId && node.type === 'objective');
         
         if (objectiveNode) {
           // Recalculate progress for this objective
           // Find all key results still connected to this objective
-          const keyResultEdges = edges.filter(e => 
+          const keyResultEdges = updatedEdges.filter(e => 
             (e.source === objectiveId || e.target === objectiveId) &&
-            nodes.find(n => (n.id === e.source || n.id === e.target) && n.type === 'keyResult')
+            updatedNodes.find(n => (n.id === e.source || n.id === e.target) && n.type === 'keyResult')
           );
           
           const connectedKeyResults = keyResultEdges.map(e => {
             const keyResultId = e.source === objectiveId ? e.target : e.source;
-            return nodes.find(n => n.id === keyResultId && n.type === 'keyResult');
+            return updatedNodes.find(n => n.id === keyResultId && n.type === 'keyResult');
           }).filter(kr => kr !== undefined);
           
           // Calculate average progress or set to 0 if no key results
