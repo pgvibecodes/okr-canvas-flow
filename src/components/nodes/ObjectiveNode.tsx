@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Edit, Check, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 const ObjectiveNode = ({ id, data }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -56,6 +57,8 @@ const ObjectiveNode = ({ id, data }) => {
       animated: false,
       style: { stroke: '#6366f1', strokeWidth: 2 },
     });
+    
+    toast.success('Key result added');
   }, [id, reactFlow]);
 
   const addSubObjective = useCallback(() => {
@@ -98,6 +101,8 @@ const ObjectiveNode = ({ id, data }) => {
       animated: false,
       style: { stroke: '#6366f1', strokeWidth: 2 },
     });
+    
+    toast.success('Sub-objective added');
   }, [id, reactFlow]);
 
   const handleSave = useCallback(() => {
@@ -109,7 +114,111 @@ const ObjectiveNode = ({ id, data }) => {
       )
     );
     setIsEditing(false);
+    toast.success('Objective updated');
   }, [id, label, description, reactFlow]);
+  
+  const handleDelete = useCallback(() => {
+    // Get the current state
+    const { nodes, edges } = reactFlow.getState();
+    
+    // Find all edges connected to this node
+    const connectedEdges = edges.filter(
+      edge => edge.source === id || edge.target === id
+    );
+    
+    // Find all directly connected nodes
+    const connectedNodeIds = new Set(
+      connectedEdges.flatMap(edge => [edge.source, edge.target])
+    );
+    connectedNodeIds.delete(id);
+    
+    // Find parent objective if this is a sub-objective
+    const parentEdges = edges.filter(
+      edge => (edge.target === id) && 
+      nodes.find(n => n.id === edge.source && n.type === 'objective')
+    );
+    
+    const parentIds = parentEdges.map(edge => edge.source);
+    
+    // Remove the edges first
+    reactFlow.setEdges(edges => 
+      edges.filter(edge => edge.source !== id && edge.target !== id)
+    );
+    
+    // Remove the node
+    reactFlow.setNodes(nodes => 
+      nodes.filter(node => node.id !== id)
+    );
+    
+    toast.success('Objective deleted');
+    
+    // Update parent objective progress if this was a sub-objective
+    setTimeout(() => {
+      const { edges, nodes } = reactFlow.getState();
+      
+      // For each parent, recalculate progress
+      parentIds.forEach(parentId => {
+        const parentNode = nodes.find(node => node.id === parentId);
+        if (!parentNode) return;
+        
+        // Find all connected objectives and key results
+        updateObjectiveProgress(parentId);
+      });
+    }, 50);
+  }, [id, reactFlow]);
+  
+  // Helper function to update objective progress
+  const updateObjectiveProgress = (objectiveId) => {
+    const { edges, nodes } = reactFlow.getState();
+    
+    // Find all key results connected to this objective
+    const keyResultEdges = edges.filter(e => 
+      (e.source === objectiveId || e.target === objectiveId) &&
+      nodes.find(n => (n.id === e.source || n.id === e.target) && n.type === 'keyResult')
+    );
+    
+    const connectedKeyResults = keyResultEdges.map(e => {
+      const keyResultId = e.source === objectiveId ? e.target : e.source;
+      return nodes.find(n => n.id === keyResultId && n.type === 'keyResult');
+    }).filter(kr => kr !== undefined);
+    
+    // Find all sub-objectives
+    const subObjectiveEdges = edges.filter(e => 
+      e.source === objectiveId && 
+      nodes.find(n => n.id === e.target && n.type === 'objective')
+    );
+    
+    const subObjectives = subObjectiveEdges.map(e => 
+      nodes.find(n => n.id === e.target && n.type === 'objective')
+    ).filter(o => o !== undefined);
+    
+    // Calculate average progress from key results and sub-objectives
+    let totalItems = connectedKeyResults.length + subObjectives.length;
+    let totalProgress = connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0) +
+                        subObjectives.reduce((sum, so) => sum + (so.data.progress || 0), 0);
+    
+    // Calculate average or default to 0
+    const avgProgress = totalItems > 0 ? Math.round(totalProgress / totalItems) : 0;
+    
+    // Update objective progress
+    reactFlow.setNodes(nodes => 
+      nodes.map(node => 
+        node.id === objectiveId 
+          ? { ...node, data: { ...node.data, progress: avgProgress }} 
+          : node
+      )
+    );
+    
+    // Find parent objective and update its progress as well
+    const parentEdges = edges.filter(
+      edge => (edge.target === objectiveId) && 
+      nodes.find(n => n.id === edge.source && n.type === 'objective')
+    );
+    
+    parentEdges.forEach(edge => {
+      updateObjectiveProgress(edge.source);
+    });
+  };
 
   return (
     <Card className="border-2 border-blue-500 w-64 shadow-md">
@@ -132,24 +241,34 @@ const ObjectiveNode = ({ id, data }) => {
               {label}
             </CardTitle>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              if (isEditing) {
-                handleSave();
-              } else {
-                setIsEditing(true);
-              }
-            }}
-            className="h-8 w-8"
-          >
-            {isEditing ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Edit className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="flex space-x-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (isEditing) {
+                  handleSave();
+                } else {
+                  setIsEditing(true);
+                }
+              }}
+              className="h-8 w-8"
+            >
+              {isEditing ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Edit className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-3">

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   ReactFlow, 
@@ -8,8 +9,7 @@ import {
   addEdge,
   Panel,
   ConnectionLineType,
-  MarkerType,
-  NodeMouseHandler
+  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toast } from 'sonner';
@@ -32,43 +32,118 @@ const OKRBoard = () => {
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
-  // Calculate and update objective progress based on connected key results
-  useEffect(() => {
+  // Helper function to update objective progress based on connected items
+  const updateObjectiveProgress = useCallback((objectiveId) => {
     setNodes((nds) => {
-      return nds.map(node => {
-        // Only process objectives
-        if (node.type !== 'objective') return node;
-        
-        // Find all key results connected to this objective
-        const connectedKeyResults = edges
-          .filter(edge => 
-            (edge.source === node.id && nds.find(n => n.id === edge.target)?.type === 'keyResult') || 
-            (edge.target === node.id && nds.find(n => n.id === edge.source)?.type === 'keyResult')
-          )
-          .map(edge => {
-            const keyResultId = edge.source === node.id ? edge.target : edge.source;
-            return nds.find(n => n.id === keyResultId);
-          })
-          .filter(kr => kr !== undefined);
-        
-        // If no key results, keep current progress
-        if (connectedKeyResults.length === 0) return node;
-        
-        // Calculate average progress of connected key results
-        const totalProgress = connectedKeyResults.reduce((sum, kr) => sum + kr.data.progress, 0);
-        const avgProgress = Math.round(totalProgress / connectedKeyResults.length);
-        
-        // Update objective progress
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            progress: avgProgress
-          }
-        };
-      });
+      // Get the current nodes and edges
+      const currentNodes = nds;
+      const currentEdges = edges;
+      
+      // Find the objective node
+      const objectiveNode = currentNodes.find(node => node.id === objectiveId);
+      if (!objectiveNode) return nds;
+      
+      // Find all key results connected to this objective
+      const keyResultConnections = currentEdges
+        .filter(edge => 
+          (edge.source === objectiveId && currentNodes.find(n => n.id === edge.target)?.type === 'keyResult') || 
+          (edge.target === objectiveId && currentNodes.find(n => n.id === edge.source)?.type === 'keyResult')
+        )
+        .map(edge => {
+          const keyResultId = edge.source === objectiveId ? edge.target : edge.source;
+          return currentNodes.find(n => n.id === keyResultId);
+        })
+        .filter(kr => kr !== undefined);
+      
+      // Find all sub-objectives connected to this objective
+      const subObjectiveConnections = currentEdges
+        .filter(edge => 
+          (edge.source === objectiveId && currentNodes.find(n => n.id === edge.target)?.type === 'objective')
+        )
+        .map(edge => {
+          return currentNodes.find(n => n.id === edge.target);
+        })
+        .filter(so => so !== undefined);
+      
+      // Calculate average progress including both key results and sub-objectives
+      const totalItems = keyResultConnections.length + subObjectiveConnections.length;
+      if (totalItems === 0) return nds; // No items to calculate progress from
+      
+      const totalProgress = 
+        keyResultConnections.reduce((sum, kr) => sum + kr.data.progress, 0) +
+        subObjectiveConnections.reduce((sum, so) => sum + (so.data.progress || 0), 0);
+      
+      const avgProgress = Math.round(totalProgress / totalItems);
+      
+      // Update objective progress
+      return nds.map(node => 
+        node.id === objectiveId
+          ? { ...node, data: { ...node.data, progress: avgProgress } }
+          : node
+      );
     });
   }, [edges, setNodes]);
+  
+  // Update parent objectives when child objectives change
+  const updateParentObjectives = useCallback(() => {
+    // Start by finding all objective-to-objective connections
+    const hierarchyEdges = edges.filter(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      const targetNode = nodes.find(node => node.id === edge.target);
+      return sourceNode?.type === 'objective' && targetNode?.type === 'objective';
+    });
+    
+    // Find all leaf objectives (those with no children)
+    const leafObjectiveIds = new Set(
+      nodes
+        .filter(node => node.type === 'objective')
+        .map(node => node.id)
+    );
+    
+    // Remove any objectives that are parents
+    hierarchyEdges.forEach(edge => {
+      leafObjectiveIds.delete(edge.source);
+    });
+    
+    // Process all leaf objectives first
+    leafObjectiveIds.forEach(objId => {
+      updateObjectiveProgress(objId);
+    });
+    
+    // Then process up the hierarchy level by level
+    let processed = new Set([...leafObjectiveIds]);
+    let nextLevel = new Set();
+    
+    // Multiple passes to handle different hierarchy depths
+    for (let i = 0; i < 5; i++) { // Max 5 levels of hierarchy
+      hierarchyEdges.forEach(edge => {
+        // If we've processed the target, we can process the source
+        if (processed.has(edge.target) && !processed.has(edge.source)) {
+          nextLevel.add(edge.source);
+        }
+      });
+      
+      // Process the next level
+      nextLevel.forEach(objId => {
+        updateObjectiveProgress(objId);
+        processed.add(objId);
+      });
+      
+      // If no more nodes to process, break
+      if (nextLevel.size === 0) break;
+      nextLevel = new Set();
+    }
+  }, [edges, nodes, updateObjectiveProgress]);
+  
+  // Effect to update objective progress when nodes or edges change
+  useEffect(() => {
+    // Small delay to ensure state is updated
+    const timeoutId = setTimeout(() => {
+      updateParentObjectives();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [edges, nodes, updateParentObjectives]);
 
   const onConnect = useCallback(
     (params) => {
@@ -104,8 +179,18 @@ const OKRBoard = () => {
       );
       
       toast.success('Connection created');
+      
+      // Update progress after a short delay to ensure state is updated
+      setTimeout(() => {
+        if (sourceNode.type === 'objective') {
+          updateObjectiveProgress(sourceNode.id);
+        }
+        if (targetNode.type === 'objective') {
+          updateObjectiveProgress(targetNode.id);
+        }
+      }, 100);
     },
-    [nodes, setEdges]
+    [nodes, setEdges, updateObjectiveProgress]
   );
 
   const onDragOver = useCallback((event) => {
@@ -196,27 +281,13 @@ const OKRBoard = () => {
 
       setEdges((eds) => eds.concat(newEdge));
       toast.success('Key Result added');
+      
+      // Update objective progress after adding key result
+      setTimeout(() => {
+        updateObjectiveProgress(objectiveId);
+      }, 100);
     },
-    [nodes, edges, setNodes, setEdges]
-  );
-  
-  // Add handler for node deletion
-  const onNodeDoubleClick = useCallback(
-    (_, node) => {
-      // Ask for confirmation before deletion
-      if (window.confirm(`Delete this ${node.type}?`)) {
-        // Remove the node
-        setNodes((nds) => nds.filter((n) => n.id !== node.id));
-        
-        // Remove any connected edges
-        setEdges((eds) => eds.filter(
-          (e) => e.source !== node.id && e.target !== node.id
-        ));
-        
-        toast.success(`${node.type === 'objective' ? 'Objective' : 'Key Result'} deleted`);
-      }
-    },
-    [setNodes, setEdges]
+    [nodes, edges, setNodes, setEdges, updateObjectiveProgress]
   );
 
   const handleCanvasClick = useCallback(
@@ -246,7 +317,6 @@ const OKRBoard = () => {
         onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         onClick={handleCanvasClick}
-        onNodeDoubleClick={onNodeDoubleClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'smoothstep',
@@ -259,7 +329,7 @@ const OKRBoard = () => {
         <Background gap={16} color="#f1f5f9" />
         <Panel position="top-center" className="bg-white rounded-lg shadow-lg p-2">
           <div className="text-sm text-gray-500 flex items-center space-x-2">
-            <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective. Double-click to delete.</p>
+            <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective.</p>
           </div>
         </Panel>
         <FloatingActionBar onAddObjective={addNewObjective} />
