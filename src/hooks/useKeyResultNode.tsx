@@ -8,7 +8,7 @@ export function useKeyResultNode(id: string, data: any) {
   const [label, setLabel] = useState(data.label || 'New Key Result');
   const [description, setDescription] = useState(data.description || '');
   const [progress, setProgress] = useState(data.progress || 0);
-  const [department, setDepartment] = useState(data.department || '');
+  const [department, setDepartment] = useState(data.department || 'none');
   const reactFlow = useReactFlow();
 
   const handleSave = useCallback(() => {

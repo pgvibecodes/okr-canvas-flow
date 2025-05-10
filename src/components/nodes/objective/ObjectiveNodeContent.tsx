@@ -55,7 +55,7 @@ const ObjectiveNodeContent: React.FC<ObjectiveNodeContentProps> = ({
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
@@ -66,7 +66,7 @@ const ObjectiveNodeContent: React.FC<ObjectiveNodeContentProps> = ({
       ) : (
         <>
           <p className="text-sm text-gray-600 mb-2">{description}</p>
-          {department && (
+          {department && department !== "none" && (
             <div className="mb-2">
               <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                 {department}

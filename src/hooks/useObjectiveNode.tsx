@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,7 +8,7 @@ export function useObjectiveNode(id: string, initialData: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(initialData.label || 'New Objective');
   const [description, setDescription] = useState(initialData.description || '');
-  const [department, setDepartment] = useState(initialData.department || '');
+  const [department, setDepartment] = useState(initialData.department || 'none');
   const reactFlow = useReactFlow();
   const progress = initialData.progress || 0;
 
