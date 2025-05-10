@@ -16,6 +16,8 @@ const ObjectiveNode = ({ id, data }) => {
     description,
     setDescription,
     progress,
+    department,
+    setDepartment,
     addKeyResult,
     addSubObjective,
     handleSave,
@@ -40,6 +42,8 @@ const ObjectiveNode = ({ id, data }) => {
           description={description}
           setDescription={setDescription}
           progress={progress}
+          department={department}
+          setDepartment={setDepartment}
         />
       </CardContent>
       <CardFooter className="p-0">

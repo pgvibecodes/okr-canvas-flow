@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -55,7 +54,7 @@ export const calculateObjectiveProgress = (
   return Math.round(totalProgress / totalItems);
 };
 
-export const createObjectiveNode = (position: { x: number; y: number }) => {
+export const createObjectiveNode = (position: { x: number; y: number }, department: string = '') => {
   const id = `objective-${uuidv4()}`;
   return {
     id,
@@ -65,6 +64,7 @@ export const createObjectiveNode = (position: { x: number; y: number }) => {
       label: 'New Objective', 
       description: 'Click to edit',
       progress: 0,
+      department: department,
     },
     style: {
       width: 260,
@@ -78,7 +78,8 @@ export const createKeyResultNode = (
   objectiveId: string, 
   position: { x: number; y: number },
   objectivePosition?: { x: number; y: number },
-  offset?: number
+  offset?: number,
+  department: string = ''
 ) => {
   // Position the key result relative to its objective if position not provided
   const keyResultPos = position || {
@@ -95,6 +96,7 @@ export const createKeyResultNode = (
       label: 'New Key Result', 
       description: 'Click to edit',
       progress: 0,
+      department: department,
     },
     style: {
       width: 240,

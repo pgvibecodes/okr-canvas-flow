@@ -44,12 +44,16 @@ function OKRNodeHandler({
         edges.some(e => e.source === objectiveId && e.target === node.id)
       ).length;
 
+      // Get department from parent objective to pass to key result
+      const department = objectiveNode.data.department || '';
+
       // Create the key result with its edge
       const { node: newNode, edge: newEdge } = createKeyResultNode(
         objectiveId, 
         position, 
         objectiveNode.position, 
-        offset
+        offset,
+        department // Pass department from parent objective
       );
 
       // Create the node

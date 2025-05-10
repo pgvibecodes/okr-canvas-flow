@@ -16,6 +16,8 @@ const KeyResultNode = ({ id, data }) => {
     setDescription,
     progress,
     setProgress,
+    department,
+    setDepartment,
     handleSave,
     handleDelete
   } = useKeyResultNode(id, data);
@@ -39,6 +41,8 @@ const KeyResultNode = ({ id, data }) => {
           setDescription={setDescription}
           progress={progress}
           setProgress={setProgress}
+          department={department}
+          setDepartment={setDepartment}
         />
       </CardContent>
 

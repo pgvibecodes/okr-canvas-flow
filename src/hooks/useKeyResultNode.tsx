@@ -8,13 +8,14 @@ export function useKeyResultNode(id: string, data: any) {
   const [label, setLabel] = useState(data.label || 'New Key Result');
   const [description, setDescription] = useState(data.description || '');
   const [progress, setProgress] = useState(data.progress || 0);
+  const [department, setDepartment] = useState(data.department || '');
   const reactFlow = useReactFlow();
 
   const handleSave = useCallback(() => {
     reactFlow.setNodes((nodes) =>
       nodes.map((node) =>
         node.id === id
-          ? { ...node, data: { ...node.data, label, description, progress } }
+          ? { ...node, data: { ...node.data, label, description, progress, department } }
           : node
       )
     );
@@ -24,7 +25,7 @@ export function useKeyResultNode(id: string, data: any) {
     updateConnectedObjectives();
     
     toast.success('Key result updated');
-  }, [id, label, description, progress, reactFlow]);
+  }, [id, label, description, progress, department, reactFlow]);
   
   // Helper function to update the progress of connected objectives
   const updateConnectedObjectives = useCallback(() => {
@@ -149,6 +150,8 @@ export function useKeyResultNode(id: string, data: any) {
     setDescription,
     progress,
     setProgress,
+    department,
+    setDepartment,
     handleSave,
     handleDelete
   };

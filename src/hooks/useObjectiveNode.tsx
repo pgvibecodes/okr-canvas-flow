@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +7,7 @@ export function useObjectiveNode(id: string, initialData: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(initialData.label || 'New Objective');
   const [description, setDescription] = useState(initialData.description || '');
+  const [department, setDepartment] = useState(initialData.department || '');
   const reactFlow = useReactFlow();
   const progress = initialData.progress || 0;
 
@@ -25,7 +25,7 @@ export function useObjectiveNode(id: string, initialData: any) {
     // Generate a unique ID for the key result
     const keyResultId = `keyresult-${uuidv4()}`;
     
-    // Create the key result node
+    // Create the key result node - inherit department from parent objective
     reactFlow.addNodes({
       id: keyResultId,
       type: 'keyResult',
@@ -34,6 +34,7 @@ export function useObjectiveNode(id: string, initialData: any) {
         label: 'New Key Result', 
         description: 'Click to edit',
         progress: 0,
+        department: department, // Inherit department from parent objective
       },
       style: {
         width: 240,
@@ -53,7 +54,7 @@ export function useObjectiveNode(id: string, initialData: any) {
     });
     
     toast.success('Key result added');
-  }, [id, reactFlow]);
+  }, [id, reactFlow, department]);
 
   const addSubObjective = useCallback(() => {
     // Find the current node position
@@ -69,7 +70,7 @@ export function useObjectiveNode(id: string, initialData: any) {
     // Generate a unique ID for the sub-objective
     const subObjectiveId = `objective-${uuidv4()}`;
     
-    // Create the sub-objective node
+    // Create the sub-objective node - inherit department from parent objective
     reactFlow.addNodes({
       id: subObjectiveId,
       type: 'objective',
@@ -78,6 +79,7 @@ export function useObjectiveNode(id: string, initialData: any) {
         label: 'New Sub-Objective', 
         description: 'Click to edit',
         progress: 0,
+        department: department, // Inherit department from parent objective
       },
       style: {
         width: 260,
@@ -97,19 +99,53 @@ export function useObjectiveNode(id: string, initialData: any) {
     });
     
     toast.success('Sub-objective added');
-  }, [id, reactFlow]);
+  }, [id, reactFlow, department]);
 
   const handleSave = useCallback(() => {
     reactFlow.setNodes((nodes) =>
       nodes.map((node) =>
         node.id === id
-          ? { ...node, data: { ...node.data, label, description } }
+          ? { ...node, data: { ...node.data, label, description, department } }
           : node
       )
     );
     setIsEditing(false);
     toast.success('Objective updated');
-  }, [id, label, description, reactFlow]);
+    
+    // Propagate department to connected sub-objectives and key results
+    propagateDepartmentToChildren(id, department);
+  }, [id, label, description, department, reactFlow]);
+  
+  // Helper function to propagate department to children
+  const propagateDepartmentToChildren = useCallback((objectiveId, dept) => {
+    const nodes = reactFlow.getNodes();
+    const edges = reactFlow.getEdges();
+    
+    // Find all edges where this objective is the source
+    const childEdges = edges.filter(edge => edge.source === objectiveId);
+    
+    // Update department for all connected sub-objectives and key results
+    childEdges.forEach(edge => {
+      const childId = edge.target;
+      const childNode = nodes.find(node => node.id === childId);
+      
+      if (childNode) {
+        // Update the child node's department
+        reactFlow.setNodes(nodes => 
+          nodes.map(node => 
+            node.id === childId
+              ? { ...node, data: { ...node.data, department: dept }}
+              : node
+          )
+        );
+        
+        // If the child is an objective, recursively propagate to its children
+        if (childNode.type === 'objective') {
+          propagateDepartmentToChildren(childId, dept);
+        }
+      }
+    });
+  }, [reactFlow]);
   
   const handleDelete = useCallback(() => {
     // Get the current state
@@ -231,6 +267,8 @@ export function useObjectiveNode(id: string, initialData: any) {
     setLabel,
     description,
     setDescription,
+    department,
+    setDepartment,
     progress,
     addKeyResult,
     addSubObjective,
