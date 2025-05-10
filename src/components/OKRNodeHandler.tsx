@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { ReactFlowInstance } from '@xyflow/react';
 import { createObjectiveNode, createKeyResultNode } from '../utils/okrUtils';
+import { saveOKRData } from '../utils/databaseUtils';
 
 interface OKRNodeHandlerProps {
   reactFlowInstance: ReactFlowInstance | null;
@@ -28,8 +29,14 @@ function OKRNodeHandler({
       const newNode = createObjectiveNode(position);
       setNodes((nds) => nds.concat(newNode));
       toast.success('Objective added');
+      
+      // Save changes to database
+      setTimeout(() => {
+        const updatedNodes = [...nodes, newNode];
+        saveOKRData(updatedNodes, edges);
+      }, 100);
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, nodes, edges]
   );
 
   const addKeyResult = useCallback(
@@ -68,6 +75,13 @@ function OKRNodeHandler({
       setTimeout(() => {
         updateObjectiveProgress(objectiveId);
       }, 100);
+      
+      // Save changes to database
+      setTimeout(() => {
+        const updatedNodes = [...nodes, newNode];
+        const updatedEdges = [...edges, newEdge];
+        saveOKRData(updatedNodes, updatedEdges);
+      }, 200);
     },
     [nodes, edges, setNodes, setEdges, updateObjectiveProgress]
   );

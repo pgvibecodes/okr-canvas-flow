@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { Connection, Edge, Node, addEdge, MarkerType } from '@xyflow/react';
+import { saveOKRData } from '../utils/databaseUtils';
 
 interface OKRConnectionHandlerProps {
   nodes: Node[];
@@ -33,15 +34,22 @@ function OKRConnectionHandler({ nodes, setEdges, updateObjectiveProgress }: OKRC
         return;
       }
       
-      setEdges((eds) => 
-        addEdge({
+      setEdges((eds) => {
+        const newEdges = addEdge({
           ...params,
           type: 'smoothstep',
           animated: false,
           style: { stroke: '#6366f1', strokeWidth: 2 },
           markerEnd: { type: MarkerType.ArrowClosed },
-        }, eds)
-      );
+        }, eds);
+        
+        // Save changes to database after adding connection
+        setTimeout(() => {
+          saveOKRData(nodes, newEdges);
+        }, 100);
+        
+        return newEdges;
+      });
       
       toast.success('Connection created');
       

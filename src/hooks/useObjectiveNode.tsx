@@ -1,8 +1,8 @@
-
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { saveOKRData } from '../utils/databaseUtils';
 
 export function useObjectiveNode(id: string, initialData: any) {
   const [isEditing, setIsEditing] = useState(false);
@@ -55,6 +55,13 @@ export function useObjectiveNode(id: string, initialData: any) {
     });
     
     toast.success('Key result added');
+    
+    // Save changes to database after adding key result
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
   }, [id, reactFlow, department]);
 
   const addSubObjective = useCallback(() => {
@@ -100,6 +107,13 @@ export function useObjectiveNode(id: string, initialData: any) {
     });
     
     toast.success('Sub-objective added');
+    
+    // Save changes to database after adding sub-objective
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
   }, [id, reactFlow, department]);
 
   const handleSave = useCallback(() => {
@@ -111,6 +125,14 @@ export function useObjectiveNode(id: string, initialData: any) {
       )
     );
     setIsEditing(false);
+    
+    // Save changes to database
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
+    
     toast.success('Objective updated');
     
     // Propagate department to connected sub-objectives and key results
@@ -198,6 +220,13 @@ export function useObjectiveNode(id: string, initialData: any) {
         updateObjectiveProgress(parentId);
       });
     }, 50);
+    
+    // Save changes to database after deletion
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
   }, [id, reactFlow]);
   
   // Helper function to update objective progress

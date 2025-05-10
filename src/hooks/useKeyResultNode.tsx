@@ -1,7 +1,7 @@
-
 import { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { toast } from 'sonner';
+import { saveOKRData } from '../utils/databaseUtils';
 
 export function useKeyResultNode(id: string, data: any) {
   const [isEditing, setIsEditing] = useState(false);
@@ -23,6 +23,13 @@ export function useKeyResultNode(id: string, data: any) {
     
     // Find connected objectives and update their progress
     updateConnectedObjectives();
+    
+    // Save changes to database
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
     
     toast.success('Key result updated');
   }, [id, label, description, progress, department, reactFlow]);
@@ -139,6 +146,13 @@ export function useKeyResultNode(id: string, data: any) {
         }
       });
     }, 50);
+    
+    // Save changes to database after deletion
+    setTimeout(() => {
+      const updatedNodes = reactFlow.getNodes();
+      const updatedEdges = reactFlow.getEdges();
+      saveOKRData(updatedNodes, updatedEdges);
+    }, 100);
   }, [id, reactFlow]);
 
   return {
