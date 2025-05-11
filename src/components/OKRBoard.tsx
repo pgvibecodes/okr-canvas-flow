@@ -22,6 +22,7 @@ import { saveOKRData, loadOKRData } from '../utils/databaseUtils';
 import { Button } from './ui/button';
 import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import BoardSelector from './BoardSelector';
 
 const nodeTypes = {
   objective: ObjectiveNode,
@@ -40,6 +41,7 @@ const OKRBoard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentBoardId, setCurrentBoardId] = useState<number | undefined>(undefined);
   
   // Use the progress hook
   const { updateObjectiveProgress, updateParentObjectives } = useObjectiveProgress(nodes, edges, setNodes);
@@ -80,27 +82,33 @@ const OKRBoard = () => {
     checkAuth();
   }, []);
 
-  // Load saved data on initial render
+  // Load saved data when board changes
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const savedData = await loadOKRData();
-        if (savedData) {
-          setNodes(savedData.nodes || []);
-          setEdges(savedData.edges || []);
-          toast.success('OKR data loaded successfully');
-        }
-      } catch (error) {
-        console.error('Error loading OKR data:', error);
-        toast.error('Failed to load OKR data');
-      } finally {
-        setIsLoading(false);
+    if (currentBoardId) {
+      loadBoardData(currentBoardId);
+    }
+  }, [currentBoardId]);
+
+  const loadBoardData = async (boardId: number) => {
+    setIsLoading(true);
+    try {
+      const savedData = await loadOKRData(boardId);
+      if (savedData) {
+        setNodes(savedData.nodes || []);
+        setEdges(savedData.edges || []);
+        toast.success('OKR data loaded successfully');
+      } else {
+        // Clear existing data if no saved data exists for this board
+        setNodes([]);
+        setEdges([]);
       }
-    };
-    
-    fetchData();
-  }, [setNodes, setEdges, isAuthenticated]);
+    } catch (error) {
+      console.error('Error loading OKR data:', error);
+      toast.error('Failed to load OKR data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Track changes in nodes and edges to determine if there are unsaved changes
   useEffect(() => {
@@ -111,16 +119,23 @@ const OKRBoard = () => {
 
   // Save OKR data
   const handleSave = useCallback(async () => {
+    if (!currentBoardId) {
+      toast.error('No board selected');
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      await saveOKRData(nodes, edges);
+      await saveOKRData(nodes, edges, currentBoardId);
       setUnsavedChanges(false);
+      toast.success('OKR data saved successfully');
     } catch (error) {
       console.error('Error saving OKR data:', error);
+      toast.error('Failed to save OKR data');
     } finally {
       setIsSaving(false);
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, currentBoardId]);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -147,19 +162,34 @@ const OKRBoard = () => {
     [addNewObjective, reactFlowInstance, setUnsavedChanges]
   );
 
+  // Handle board change
+  const handleBoardChange = (boardId: number) => {
+    if (unsavedChanges) {
+      const confirm = window.confirm('You have unsaved changes. Do you want to save them before switching boards?');
+      if (confirm) {
+        handleSave().then(() => {
+          setCurrentBoardId(boardId);
+        });
+        return;
+      }
+    }
+    
+    setCurrentBoardId(boardId);
+  };
+
   // Auto-save functionality
   useEffect(() => {
-    // Only save if there are nodes or edges to save and there are unsaved changes
-    if (unsavedChanges && (nodes.length > 0 || edges.length > 0)) {
+    // Only save if there are nodes or edges to save, there are unsaved changes, and a board is selected
+    if (unsavedChanges && (nodes.length > 0 || edges.length > 0) && currentBoardId) {
       const timeoutId = setTimeout(async () => {
-        await saveOKRData(nodes, edges);
+        await saveOKRData(nodes, edges, currentBoardId);
         setUnsavedChanges(false);
         console.log('Auto-saved OKR data');
       }, 5000); // Auto-save after 5 seconds of inactivity
       
       return () => clearTimeout(timeoutId);
     }
-  }, [nodes, edges, unsavedChanges]);
+  }, [nodes, edges, unsavedChanges, currentBoardId]);
 
   if (isLoading) {
     return (
@@ -195,8 +225,14 @@ const OKRBoard = () => {
         <Controls />
         <Background gap={16} color="#f1f5f9" />
         <Panel position="top-center" className="bg-white rounded-lg shadow-lg p-2">
-          <div className="text-sm text-gray-500 flex items-center space-x-2">
-            <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective.</p>
+          <div className="flex items-center gap-4">
+            <BoardSelector 
+              currentBoardId={currentBoardId} 
+              onBoardChange={handleBoardChange} 
+            />
+            <div className="text-sm text-gray-500">
+              <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective.</p>
+            </div>
           </div>
         </Panel>
         <Panel position="top-right" className="mr-16">
@@ -209,7 +245,7 @@ const OKRBoard = () => {
             <Button 
               onClick={handleSave}
               className={`flex items-center gap-2 ${unsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'}`}
-              disabled={!unsavedChanges || isSaving}
+              disabled={!unsavedChanges || isSaving || !currentBoardId}
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save size={18} />}
               {isSaving ? 'Saving...' : 'Save'}

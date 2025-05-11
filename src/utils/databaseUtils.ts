@@ -4,13 +4,13 @@ import { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
 import { supabase } from '../services/supabaseClient';
 import { OKRData } from '../services/okrTypes';
-import { getOrCreateBoardId, clearOKRBoards } from '../services/boardService';
+import { getOrCreateBoardId } from '../services/boardService';
 import { saveObjectives, deleteObjectives } from '../services/objectiveService';
 import { saveKeyResults, deleteKeyResults } from '../services/keyResultService';
 import { saveEdges, deleteEdges } from '../services/edgeService';
 
 // Function to save OKR data to Supabase
-export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> => {
+export const saveOKRData = async (nodes: Node[], edges: Edge[], boardId?: number): Promise<void> => {
   try {
     // Get the current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,8 +23,8 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
       return;
     }
 
-    // Get or create a board for the user
-    const boardId = await getOrCreateBoardId(user.id);
+    // Get or create a board for the user if not provided
+    const actualBoardId = boardId || await getOrCreateBoardId(user.id);
 
     // Begin transaction by storing nodes and edges
     const saveToDb = async () => {
@@ -33,22 +33,21 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
       const keyResults = nodes.filter(node => node.type === 'keyResult');
 
       // Clear existing data for this board (this is a simple approach, could be optimized)
-      await deleteEdges(boardId);
+      await deleteEdges(actualBoardId);
       await deleteKeyResults(user.id);
-      await deleteObjectives(boardId);
+      await deleteObjectives(actualBoardId);
 
       // Insert objectives
-      await saveObjectives(objectives, user.id, boardId);
+      await saveObjectives(objectives, user.id, actualBoardId);
 
       // Insert key results
       await saveKeyResults(keyResults, edges, nodes, user.id);
 
       // Insert edges
-      await saveEdges(edges, user.id, boardId);
+      await saveEdges(edges, user.id, actualBoardId);
     };
 
     await saveToDb();
-    toast.success('OKR data saved successfully');
     console.log('OKR data saved to database');
   } catch (error) {
     console.error('Failed to save OKR data:', error);
@@ -66,7 +65,7 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
 };
 
 // Function to load OKR data from Supabase
-export const loadOKRData = async (): Promise<OKRData | null> => {
+export const loadOKRData = async (boardId?: number): Promise<OKRData | null> => {
   try {
     // Get the current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,20 +80,25 @@ export const loadOKRData = async (): Promise<OKRData | null> => {
       return okrData;
     }
 
-    // Try to get a board for the user, or create one if none exists
-    let boardId: number;
-    try {
-      boardId = await getOrCreateBoardId(user.id);
-    } catch (error) {
-      console.error('Failed to get or create board:', error);
-      
-      // Try loading from localStorage as fallback
-      const savedData = localStorage.getItem('okr-data');
-      if (!savedData) return null;
-      
-      const okrData = JSON.parse(savedData) as OKRData;
-      console.log('OKR data loaded from localStorage (board error fallback)');
-      return okrData;
+    // If no boardId is provided, try to get a board for the user, or create one if none exists
+    let actualBoardId: number;
+    
+    if (boardId) {
+      actualBoardId = boardId;
+    } else {
+      try {
+        actualBoardId = await getOrCreateBoardId(user.id);
+      } catch (error) {
+        console.error('Failed to get or create board:', error);
+        
+        // Try loading from localStorage as fallback
+        const savedData = localStorage.getItem('okr-data');
+        if (!savedData) return null;
+        
+        const okrData = JSON.parse(savedData) as OKRData;
+        console.log('OKR data loaded from localStorage (board error fallback)');
+        return okrData;
+      }
     }
 
     // Load data from all services
@@ -103,13 +107,13 @@ export const loadOKRData = async (): Promise<OKRData | null> => {
     const { loadEdges } = await import('../services/edgeService');
 
     // Load objectives from the database
-    const objectivesNodes = await loadObjectives(boardId);
+    const objectivesNodes = await loadObjectives(actualBoardId);
 
     // Load key results from the database
     const keyResultNodes = await loadKeyResults(user.id);
 
     // Load edges from the database
-    const edgesData = await loadEdges(boardId);
+    const edgesData = await loadEdges(actualBoardId);
 
     // Combine all nodes
     const nodes = [...objectivesNodes, ...keyResultNodes];
@@ -142,7 +146,9 @@ export const clearOKRData = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      await clearOKRBoards(user.id);
+      await deleteEdges();
+      await deleteKeyResults(user.id);
+      await deleteObjectives();
     }
     
     // Always clear localStorage as well

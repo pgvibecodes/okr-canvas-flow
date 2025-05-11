@@ -71,3 +71,41 @@ export const clearOKRBoards = async (userId: string): Promise<void> => {
     throw error;
   }
 };
+
+// Get all boards for a user
+export const getUserBoards = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('okr_boards')
+    .select('id, name, description, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to get user boards:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+// Create a new board
+export const createBoard = async (userId: string, name: string, description?: string) => {
+  const { data, error } = await supabase
+    .from('okr_boards')
+    .insert({
+      user_id: userId,
+      name,
+      description
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Failed to create board:', error);
+    toast.error('Failed to create board');
+    throw error;
+  }
+
+  toast.success('Board created successfully');
+  return data.id;
+};
