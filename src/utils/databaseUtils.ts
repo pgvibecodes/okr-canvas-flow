@@ -1,8 +1,8 @@
 
 // Utility functions to handle OKR data persistence
-import { Node, Edge } from '@xyflow/react';
+import { Node, Edge, MarkerType } from '@xyflow/react';
 import { toast } from 'sonner';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../services/supabaseClient';
 import { OKRNode, OKREdge, SavedOKRData } from '../services/supabaseClient';
 
 // Type definitions for OKR data
@@ -26,19 +26,30 @@ const convertToOKRNodes = (nodes: Node[]): OKRNode[] => {
 
 // Convert xyflow Edge to OKREdge type
 const convertToOKREdges = (edges: Edge[]): OKREdge[] => {
-  return edges.map(edge => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    type: edge.type,
-    animated: edge.animated,
-    style: edge.style,
-    markerEnd: edge.markerEnd ? 
-      (typeof edge.markerEnd === 'string' ? edge.markerEnd : { type: edge.markerEnd }) : 
-      undefined,
-    sourceHandle: edge.sourceHandle,
-    label: edge.label ? String(edge.label) : undefined
-  }));
+  return edges.map(edge => {
+    // Handle markerEnd conversion
+    let markerEnd: { type: MarkerType } | string | undefined = undefined;
+    
+    if (edge.markerEnd) {
+      if (typeof edge.markerEnd === 'string') {
+        markerEnd = edge.markerEnd;
+      } else if (typeof edge.markerEnd === 'object' && 'type' in edge.markerEnd) {
+        markerEnd = { type: edge.markerEnd.type as MarkerType };
+      }
+    }
+    
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type,
+      animated: edge.animated,
+      style: edge.style,
+      markerEnd: markerEnd,
+      sourceHandle: edge.sourceHandle,
+      label: edge.label ? String(edge.label) : undefined
+    };
+  });
 };
 
 // Function to save OKR data to Supabase
@@ -142,7 +153,10 @@ export const loadOKRData = async (): Promise<OKRData | null> => {
 
     if (data) {
       console.log('OKR data loaded from Supabase');
-      return { nodes: data.nodes as unknown as Node[], edges: data.edges as unknown as Edge[] };
+      return { 
+        nodes: data.nodes as unknown as Node[], 
+        edges: data.edges as unknown as Edge[] 
+      };
     }
     
     // No data found in Supabase, check localStorage

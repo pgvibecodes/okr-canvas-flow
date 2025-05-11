@@ -9,7 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      okr_data: {
+        Row: {
+          created_at: string | null
+          edges: Json
+          id: number
+          name: string | null
+          nodes: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          edges: Json
+          id?: number
+          name?: string | null
+          nodes: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          edges?: Json
+          id?: number
+          name?: string | null
+          nodes?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
