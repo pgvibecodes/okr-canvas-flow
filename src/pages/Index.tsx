@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import OKRBoard from '../components/OKRBoard';
 import AuthPanel from '../components/AuthPanel';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../integrations/supabase/client';
 import { Button } from '../components/ui/button';
 import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';

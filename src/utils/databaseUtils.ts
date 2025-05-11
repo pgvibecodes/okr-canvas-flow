@@ -2,7 +2,8 @@
 // Utility functions to handle OKR data persistence
 import { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
-import { supabase, SavedOKRData, OKRNode, OKREdge } from '../services/supabaseClient';
+import { supabase } from '../integrations/supabase/client';
+import { OKRNode, OKREdge, SavedOKRData } from '../services/supabaseClient';
 
 // Type definitions for OKR data
 export interface OKRData {
@@ -18,8 +19,8 @@ const convertToOKRNodes = (nodes: Node[]): OKRNode[] => {
     position: node.position,
     data: node.data || {},
     style: node.style,
-    parentId: node.parentNode,
-    extent: node.extent
+    parentId: node.parentId,
+    extent: node.extent ? (typeof node.extent === 'string' ? node.extent : 'parent') : undefined
   }));
 };
 
@@ -32,9 +33,11 @@ const convertToOKREdges = (edges: Edge[]): OKREdge[] => {
     type: edge.type,
     animated: edge.animated,
     style: edge.style,
-    markerEnd: edge.markerEnd ? { type: edge.markerEnd.type } : undefined,
+    markerEnd: edge.markerEnd ? 
+      (typeof edge.markerEnd === 'string' ? edge.markerEnd : { type: edge.markerEnd }) : 
+      undefined,
     sourceHandle: edge.sourceHandle,
-    label: edge.label
+    label: edge.label ? String(edge.label) : undefined
   }));
 };
 
