@@ -9,6 +9,149 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      key_results: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          description: string | null
+          id: string
+          label: string
+          objective_id: string
+          position_x: number
+          position_y: number
+          progress: number | null
+          style: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id: string
+          label?: string
+          objective_id: string
+          position_x: number
+          position_y: number
+          progress?: number | null
+          style?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          label?: string
+          objective_id?: string
+          position_x?: number
+          position_y?: number
+          progress?: number | null
+          style?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "key_results_objective_id_fkey"
+            columns: ["objective_id"]
+            isOneToOne: false
+            referencedRelation: "objectives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      objectives: {
+        Row: {
+          board_id: number
+          created_at: string | null
+          department: string | null
+          description: string | null
+          id: string
+          label: string
+          parent_id: string | null
+          position_x: number
+          position_y: number
+          progress: number | null
+          style: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          board_id: number
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id: string
+          label?: string
+          parent_id?: string | null
+          position_x: number
+          position_y: number
+          progress?: number | null
+          style?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          board_id?: number
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          label?: string
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          progress?: number | null
+          style?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objectives_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "okr_boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objectives_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "objectives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      okr_boards: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       okr_data: {
         Row: {
           created_at: string | null
@@ -38,6 +181,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      okr_edges: {
+        Row: {
+          animated: boolean | null
+          board_id: number
+          created_at: string | null
+          id: string
+          label: string | null
+          source_id: string
+          style: Json | null
+          target_id: string
+          type: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          animated?: boolean | null
+          board_id: number
+          created_at?: string | null
+          id: string
+          label?: string | null
+          source_id: string
+          style?: Json | null
+          target_id: string
+          type?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          animated?: boolean | null
+          board_id?: number
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          source_id?: string
+          style?: Json | null
+          target_id?: string
+          type?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "okr_edges_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "okr_boards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

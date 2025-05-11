@@ -9,7 +9,62 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIU
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Type definitions for our OKR data structure
+// Type definitions for our database tables
+export interface OKRBoard {
+  id?: number;
+  user_id: string;
+  name: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Objective {
+  id: string;
+  board_id: number;
+  user_id: string;
+  parent_id?: string;
+  label: string;
+  description?: string;
+  progress?: number;
+  department?: string;
+  position_x: number;
+  position_y: number;
+  style?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface KeyResult {
+  id: string;
+  objective_id: string;
+  user_id: string;
+  label: string;
+  description?: string;
+  progress?: number;
+  department?: string;
+  position_x: number;
+  position_y: number;
+  style?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OKREdge {
+  id: string;
+  source_id: string;
+  target_id: string;
+  board_id: number;
+  user_id: string;
+  type?: string;
+  animated?: boolean;
+  style?: Record<string, any>;
+  label?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// For backward compatibility with existing code
 export interface OKRNode {
   id: string;
   type: string;
@@ -18,18 +73,6 @@ export interface OKRNode {
   style?: Record<string, any>;
   parentId?: string;
   extent?: string | [number, number, number, number] | 'parent';
-}
-
-export interface OKREdge {
-  id: string;
-  source: string;
-  target: string;
-  type?: string;
-  animated?: boolean;
-  style?: Record<string, any>;
-  markerEnd?: { type: MarkerType } | string;
-  sourceHandle?: string;
-  label?: string | number;
 }
 
 export interface SavedOKRData {
