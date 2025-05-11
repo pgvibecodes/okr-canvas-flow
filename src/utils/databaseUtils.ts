@@ -2,13 +2,41 @@
 // Utility functions to handle OKR data persistence
 import { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
-import { supabase, SavedOKRData } from '../services/supabaseClient';
+import { supabase, SavedOKRData, OKRNode, OKREdge } from '../services/supabaseClient';
 
 // Type definitions for OKR data
 export interface OKRData {
   nodes: Node[];
   edges: Edge[];
 }
+
+// Convert xyflow Node to OKRNode type
+const convertToOKRNodes = (nodes: Node[]): OKRNode[] => {
+  return nodes.map(node => ({
+    id: node.id,
+    type: node.type || 'default',
+    position: node.position,
+    data: node.data || {},
+    style: node.style,
+    parentId: node.parentNode,
+    extent: node.extent
+  }));
+};
+
+// Convert xyflow Edge to OKREdge type
+const convertToOKREdges = (edges: Edge[]): OKREdge[] => {
+  return edges.map(edge => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    type: edge.type,
+    animated: edge.animated,
+    style: edge.style,
+    markerEnd: edge.markerEnd ? { type: edge.markerEnd.type } : undefined,
+    sourceHandle: edge.sourceHandle,
+    label: edge.label
+  }));
+};
 
 // Function to save OKR data to Supabase
 export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> => {
@@ -35,10 +63,14 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
       throw new Error(`Failed to check existing data: ${fetchError.message}`);
     }
 
+    // Convert nodes and edges to OKRNode[] and OKREdge[] types
+    const okrNodes = convertToOKRNodes(nodes);
+    const okrEdges = convertToOKREdges(edges);
+
     const okrData: SavedOKRData = {
       user_id: user.id,
-      nodes,
-      edges,
+      nodes: okrNodes,
+      edges: okrEdges,
       updated_at: new Date().toISOString(),
     };
 
@@ -107,7 +139,7 @@ export const loadOKRData = async (): Promise<OKRData | null> => {
 
     if (data) {
       console.log('OKR data loaded from Supabase');
-      return { nodes: data.nodes, edges: data.edges };
+      return { nodes: data.nodes as unknown as Node[], edges: data.edges as unknown as Edge[] };
     }
     
     // No data found in Supabase, check localStorage
