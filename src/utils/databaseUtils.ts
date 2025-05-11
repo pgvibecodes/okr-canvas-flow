@@ -1,3 +1,4 @@
+
 // Utility functions to handle OKR data persistence
 import { Node, Edge, MarkerType } from '@xyflow/react';
 import { toast } from 'sonner';
@@ -158,7 +159,7 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
 
       // Clear existing data for this board (this is a simple approach, could be optimized)
       await supabase.from('okr_edges').delete().eq('board_id', boardId);
-      await supabase.from('key_results').delete().eq('user_id', user.id).eq('objective_id', 'in', objectives.map(o => o.id));
+      await supabase.from('key_results').delete().eq('user_id', user.id);
       await supabase.from('objectives').delete().eq('board_id', boardId);
 
       // Insert objectives
