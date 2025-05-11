@@ -1,138 +1,13 @@
 
-// Utility functions to handle OKR data persistence
-import { Node, Edge, MarkerType } from '@xyflow/react';
+// Main OKR data persistence utilities
+import { Node, Edge } from '@xyflow/react';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../services/supabaseClient';
-import { OKRNode, OKREdge, OKRBoard, Objective, KeyResult } from '../services/supabaseClient';
-
-// Type definitions for OKR data
-export interface OKRData {
-  nodes: Node[];
-  edges: Edge[];
-}
-
-// Create a default board if none exists
-const createDefaultBoard = async (userId: string): Promise<number> => {
-  const { data, error } = await supabase
-    .from('okr_boards')
-    .insert({
-      user_id: userId,
-      name: 'My OKR Board',
-      description: 'Default OKR board'
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    console.error('Failed to create default board:', error);
-    throw error;
-  }
-
-  return data.id;
-};
-
-// Get the first board ID for the user or create one
-const getOrCreateBoardId = async (userId: string): Promise<number> => {
-  const { data, error } = await supabase
-    .from('okr_boards')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Failed to get board:', error);
-    throw error;
-  }
-
-  if (data?.id) {
-    return data.id;
-  }
-
-  // Create a default board if none exists
-  return createDefaultBoard(userId);
-};
-
-// Convert xyflow Node to database format
-const prepareObjectiveForDb = (node: Node, userId: string, boardId: number): Objective => {
-  return {
-    id: node.id,
-    board_id: boardId,
-    user_id: userId,
-    parent_id: node.parentId,
-    label: typeof node.data?.label === 'string' ? node.data.label : 'New Objective',
-    description: typeof node.data?.description === 'string' ? node.data.description : '',
-    progress: typeof node.data?.progress === 'number' ? node.data.progress : 0,
-    department: typeof node.data?.department === 'string' ? node.data.department : null,
-    position_x: node.position.x,
-    position_y: node.position.y,
-    style: node.style || null
-  };
-};
-
-// Convert xyflow Node to database format for key results
-const prepareKeyResultForDb = (node: Node, userId: string, objectiveId: string): KeyResult => {
-  return {
-    id: node.id,
-    objective_id: objectiveId,
-    user_id: userId,
-    label: typeof node.data?.label === 'string' ? node.data.label : 'New Key Result',
-    description: typeof node.data?.description === 'string' ? node.data.description : '',
-    progress: typeof node.data?.progress === 'number' ? node.data.progress : 0,
-    department: typeof node.data?.department === 'string' ? node.data.department : null,
-    position_x: node.position.x,
-    position_y: node.position.y,
-    style: node.style || null
-  };
-};
-
-// Convert xyflow Edge to database format
-const prepareEdgeForDb = (edge: Edge, userId: string, boardId: number): any => {
-  return {
-    id: edge.id,
-    source_id: edge.source,
-    target_id: edge.target,
-    board_id: boardId,
-    user_id: userId,
-    type: edge.type || null,
-    animated: edge.animated || false,
-    style: edge.style || null,
-    label: edge.label ? String(edge.label) : null
-  };
-};
-
-// Convert database Edge to xyflow Edge
-const convertDbEdgeToEdge = (dbEdge: any): Edge => {
-  return {
-    id: dbEdge.id,
-    source: dbEdge.source_id,
-    target: dbEdge.target_id,
-    type: dbEdge.type,
-    animated: dbEdge.animated,
-    style: dbEdge.style,
-    label: dbEdge.label,
-    markerEnd: { type: MarkerType.ArrowClosed }
-  };
-};
-
-// Convert database Node (objective/key result) to xyflow Node
-const convertDbNodeToNode = (dbNode: any, type: 'objective' | 'keyResult'): Node => {
-  return {
-    id: dbNode.id,
-    type,
-    position: { x: dbNode.position_x, y: dbNode.position_y },
-    data: {
-      label: dbNode.label,
-      description: dbNode.description,
-      progress: dbNode.progress,
-      department: dbNode.department
-    },
-    style: dbNode.style,
-    parentId: type === 'objective' ? dbNode.parent_id : undefined
-  };
-};
+import { OKRData } from '../services/okrTypes';
+import { getOrCreateBoardId, clearOKRBoards } from '../services/boardService';
+import { saveObjectives, deleteObjectives } from '../services/objectiveService';
+import { saveKeyResults, deleteKeyResults } from '../services/keyResultService';
+import { saveEdges, deleteEdges } from '../services/edgeService';
 
 // Function to save OKR data to Supabase
 export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> => {
@@ -158,58 +33,18 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[]): Promise<void> =
       const keyResults = nodes.filter(node => node.type === 'keyResult');
 
       // Clear existing data for this board (this is a simple approach, could be optimized)
-      await supabase.from('okr_edges').delete().eq('board_id', boardId);
-      await supabase.from('key_results').delete().eq('user_id', user.id);
-      await supabase.from('objectives').delete().eq('board_id', boardId);
+      await deleteEdges(boardId);
+      await deleteKeyResults(user.id);
+      await deleteObjectives(boardId);
 
       // Insert objectives
-      if (objectives.length > 0) {
-        const { error: objectivesError } = await supabase
-          .from('objectives')
-          .insert(objectives.map(node => prepareObjectiveForDb(node, user.id, boardId)));
-        
-        if (objectivesError) throw objectivesError;
-      }
+      await saveObjectives(objectives, user.id, boardId);
 
       // Insert key results
-      if (keyResults.length > 0) {
-        // Find the objective each key result belongs to
-        const keyResultInserts = [];
-        
-        for (const kr of keyResults) {
-          // Find connected objective through edges
-          const edge = edges.find(e => 
-            (e.source === kr.id && nodes.find(n => n.id === e.target && n.type === 'objective')) ||
-            (e.target === kr.id && nodes.find(n => n.id === e.source && n.type === 'objective'))
-          );
-          
-          if (edge) {
-            const objectiveId = edge.source === kr.id ? edge.target : edge.source;
-            keyResultInserts.push(prepareKeyResultForDb(kr, user.id, objectiveId));
-          } else {
-            // Fallback if no edge found (shouldn't happen in well-formed data)
-            console.warn(`No connected objective found for key result ${kr.id}`);
-            keyResultInserts.push(prepareKeyResultForDb(kr, user.id, 'unknown'));
-          }
-        }
-        
-        if (keyResultInserts.length > 0) {
-          const { error: keyResultsError } = await supabase
-            .from('key_results')
-            .insert(keyResultInserts);
-          
-          if (keyResultsError) throw keyResultsError;
-        }
-      }
+      await saveKeyResults(keyResults, edges, nodes, user.id);
 
       // Insert edges
-      if (edges.length > 0) {
-        const { error: edgesError } = await supabase
-          .from('okr_edges')
-          .insert(edges.map(edge => prepareEdgeForDb(edge, user.id, boardId)));
-        
-        if (edgesError) throw edgesError;
-      }
+      await saveEdges(edges, user.id, boardId);
     };
 
     await saveToDb();
@@ -262,46 +97,25 @@ export const loadOKRData = async (): Promise<OKRData | null> => {
       return okrData;
     }
 
-    // Load objectives from the database
-    const { data: objectivesData, error: objectivesError } = await supabase
-      .from('objectives')
-      .select('*')
-      .eq('board_id', boardId);
+    // Load data from all services
+    const { loadObjectives } = await import('../services/objectiveService');
+    const { loadKeyResults } = await import('../services/keyResultService');
+    const { loadEdges } = await import('../services/edgeService');
 
-    if (objectivesError) {
-      throw new Error(`Failed to load objectives: ${objectivesError.message}`);
-    }
+    // Load objectives from the database
+    const objectivesNodes = await loadObjectives(boardId);
 
     // Load key results from the database
-    const { data: keyResultsData, error: keyResultsError } = await supabase
-      .from('key_results')
-      .select('*')
-      .eq('user_id', user.id);
-
-    if (keyResultsError) {
-      throw new Error(`Failed to load key results: ${keyResultsError.message}`);
-    }
+    const keyResultNodes = await loadKeyResults(user.id);
 
     // Load edges from the database
-    const { data: edgesData, error: edgesError } = await supabase
-      .from('okr_edges')
-      .select('*')
-      .eq('board_id', boardId);
+    const edgesData = await loadEdges(boardId);
 
-    if (edgesError) {
-      throw new Error(`Failed to load edges: ${edgesError.message}`);
-    }
-
-    // Convert to xyflow format
-    const nodes: Node[] = [
-      ...objectivesData.map(obj => convertDbNodeToNode(obj, 'objective')),
-      ...keyResultsData.map(kr => convertDbNodeToNode(kr, 'keyResult'))
-    ];
-
-    const edges: Edge[] = edgesData.map(edge => convertDbEdgeToEdge(edge));
+    // Combine all nodes
+    const nodes = [...objectivesNodes, ...keyResultNodes];
 
     console.log('OKR data loaded from database');
-    return { nodes, edges };
+    return { nodes, edges: edgesData };
   } catch (error) {
     console.error('Failed to load OKR data:', error);
     toast.error('Failed to load your data');
@@ -328,22 +142,7 @@ export const clearOKRData = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // Get user's boards
-      const { data: boardsData } = await supabase
-        .from('okr_boards')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (boardsData && boardsData.length > 0) {
-        // Delete all boards (will cascade to objectives, key results, and edges)
-        const { error } = await supabase
-          .from('okr_boards')
-          .delete()
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-        console.log('OKR data cleared from database');
-      }
+      await clearOKRBoards(user.id);
     }
     
     // Always clear localStorage as well
