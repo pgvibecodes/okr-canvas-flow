@@ -10,25 +10,36 @@ export function useBoardManager() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  // Check authentication status
+  // Enhanced authentication status check
   useEffect(() => {
     const checkAuth = async () => {
+      // Check current session
       const { data } = await supabase.auth.getSession();
       setIsAuthenticated(!!data.session);
+      setUser(data.session?.user || null);
 
       // Subscribe to auth changes
       const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
         setIsAuthenticated(!!session);
+        setUser(session?.user || null);
+        
+        // When logging out, clear current board
+        if (event === 'SIGNED_OUT') {
+          setCurrentBoardId(undefined);
+        }
       });
+      
       return () => {
         authListener.subscription.unsubscribe();
       };
     };
+    
     checkAuth();
   }, []);
 
-  // Load board data
+  // Load board data with improved error handling
   const loadBoardData = useCallback(async (boardId: number) => {
     setIsLoading(true);
     try {
@@ -49,12 +60,18 @@ export function useBoardManager() {
     }
   }, []);
 
-  // Save OKR data
+  // Save OKR data with RLS awareness
   const handleSave = useCallback(async (nodes, edges, boardId) => {
     if (!boardId) {
       toast.error('No board selected');
       return;
     }
+    
+    if (!isAuthenticated) {
+      toast.error('You must be logged in to save data');
+      return;
+    }
+    
     setIsSaving(true);
     try {
       await saveOKRData(nodes, edges, boardId);
@@ -66,10 +83,15 @@ export function useBoardManager() {
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Handle board change
+  // Handle board change with RLS awareness
   const handleBoardChange = useCallback((boardId: number, nodes, edges, onBoardDataChange) => {
+    if (!isAuthenticated) {
+      toast.error('You must be logged in to change boards');
+      return;
+    }
+    
     if (unsavedChanges) {
       const confirm = window.confirm('You have unsaved changes. Do you want to save them before switching boards?');
       if (confirm) {
@@ -85,7 +107,7 @@ export function useBoardManager() {
         onBoardDataChange(data);
       }
     });
-  }, [currentBoardId, unsavedChanges, handleSave, loadBoardData]);
+  }, [currentBoardId, unsavedChanges, handleSave, loadBoardData, isAuthenticated]);
 
   return {
     currentBoardId,
@@ -93,6 +115,8 @@ export function useBoardManager() {
     unsavedChanges,
     setUnsavedChanges,
     isLoading,
+    isSaving,
+    user,
     isAuthenticated,
     loadBoardData,
     handleSave,
