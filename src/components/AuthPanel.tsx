@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { toast } from 'sonner';
@@ -7,24 +6,26 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Loader2 } from 'lucide-react';
-
-const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
+const AuthPanel = ({
+  onSuccess
+}: {
+  onSuccess: () => void;
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const {
+        data,
+        error
+      } = await supabase.auth.signUp({
         email,
-        password,
+        password
       });
-      
       if (error) throw error;
-      
       toast.success('Verification email sent! Please check your inbox.');
       onSuccess();
     } catch (error) {
@@ -34,19 +35,18 @@ const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
       setLoading(false);
     }
   };
-  
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const {
+        data,
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-      
       if (error) throw error;
-      
       toast.success('Signed in successfully!');
       onSuccess();
     } catch (error) {
@@ -56,11 +56,9 @@ const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
       setLoading(false);
     }
   };
-
-  return (
-    <Card className="w-full max-w-md mx-auto">
+  return <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-center">OKR Board</CardTitle>
+        <CardTitle className="text-2xl text-center">📯Horn OKR Please</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="signin">
@@ -72,36 +70,16 @@ const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
           <TabsContent value="signin">
             <form onSubmit={handleSignIn} className="space-y-4">
               <div>
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div>
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing In...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
+                  </> : 'Sign In'}
               </Button>
             </form>
           </TabsContent>
@@ -109,37 +87,16 @@ const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
           <TabsContent value="signup">
             <form onSubmit={handleSignUp} className="space-y-4">
               <div>
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <Input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div>
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
+                <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing Up...
-                  </>
-                ) : (
-                  'Sign Up'
-                )}
+                  </> : 'Sign Up'}
               </Button>
             </form>
           </TabsContent>
@@ -150,8 +107,6 @@ const AuthPanel = ({ onSuccess }: { onSuccess: () => void }) => {
           Your OKR data will be safely stored in the cloud!
         </p>
       </CardFooter>
-    </Card>
-  );
+    </Card>;
 };
-
 export default AuthPanel;
