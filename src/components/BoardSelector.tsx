@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown } from 'lucide-react';
@@ -176,8 +175,9 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
 
       <Dialog open={newBoardOpen} onOpenChange={setNewBoardOpen}>
         <DialogTrigger asChild>
-          <Button size="sm" className="px-2">
+          <Button size="sm" className="px-2 flex items-center gap-1">
             <Plus className="h-4 w-4" />
+            <span>Add Board</span>
           </Button>
         </DialogTrigger>
         <DialogContent>

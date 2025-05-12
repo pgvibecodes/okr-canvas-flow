@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   ReactFlow, 
@@ -14,15 +13,14 @@ import '@xyflow/react/dist/style.css';
 import { toast } from 'sonner';
 import ObjectiveNode from './nodes/ObjectiveNode';
 import KeyResultNode from './nodes/KeyResultNode';
-import FloatingActionBar from './FloatingActionBar';
-import useObjectiveProgress from '../hooks/useObjectiveProgress';
 import OKRConnectionHandler from './OKRConnectionHandler';
 import OKRNodeHandler from './OKRNodeHandler';
 import { saveOKRData, loadOKRData } from '../utils/databaseUtils';
+import { Loader2, Plus } from 'lucide-react';
 import { Button } from './ui/button';
-import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import BoardSelector from './BoardSelector';
+import useObjectiveProgress from '../hooks/useObjectiveProgress';
 
 const nodeTypes = {
   objective: ObjectiveNode,
@@ -224,35 +222,37 @@ const OKRBoard = () => {
       >
         <Controls />
         <Background gap={16} color="#f1f5f9" />
-        <Panel position="top-center" className="bg-white rounded-lg shadow-lg p-2">
+        
+        
+        
+        {/* Add the new bottom panel with board selector and add objective button */}
+        <Panel position="bottom-center" className="bg-white rounded-lg shadow-lg p-2 mb-4">
           <div className="flex items-center gap-4">
             <BoardSelector 
               currentBoardId={currentBoardId} 
               onBoardChange={handleBoardChange} 
             />
-            <div className="text-sm text-gray-500">
-              <p>Pan & Zoom the canvas. Hold Ctrl/Cmd + Click to add an objective.</p>
-            </div>
-          </div>
-        </Panel>
-        <Panel position="top-right" className="mr-16">
-          <div className="flex gap-2">
+            
+            <Button
+              onClick={() => addNewObjective({ x: 100, y: 100 })}
+              className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              Add Objective
+            </Button>
+            
             {!isAuthenticated && (
               <div className="bg-amber-100 text-amber-800 rounded-md px-3 py-1 text-sm flex items-center">
                 Not connected to database. Using localStorage.
               </div>
             )}
-            <Button 
-              onClick={handleSave}
-              className={`flex items-center gap-2 ${unsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'}`}
-              disabled={!unsavedChanges || isSaving || !currentBoardId}
-            >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save size={18} />}
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
+            
+            <div className="text-sm text-gray-500">
+              <p>Hold Ctrl/Cmd + Click to add an objective anywhere on the canvas</p>
+            </div>
           </div>
         </Panel>
-        <FloatingActionBar onAddObjective={addNewObjective} />
       </ReactFlow>
     </div>
   );
