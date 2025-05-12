@@ -146,9 +146,11 @@ export const clearOKRData = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      await deleteEdges();
+      // Pass boardId parameter to deleteEdges - This fixes line 149
+      await deleteEdges(null); // Pass null as we want to delete all edges for the user
       await deleteKeyResults(user.id);
-      await deleteObjectives();
+      // Pass boardId parameter to deleteObjectives - This fixes line 151
+      await deleteObjectives(null); // Pass null as we want to delete all objectives for the user
     }
     
     // Always clear localStorage as well
@@ -161,3 +163,4 @@ export const clearOKRData = async (): Promise<void> => {
     toast.error('Failed to clear your data');
   }
 };
+
