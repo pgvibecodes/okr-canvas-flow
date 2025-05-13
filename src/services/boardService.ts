@@ -45,7 +45,7 @@ export const getOrCreateBoardId = async (userId: string): Promise<number> => {
   return createDefaultBoard(userId);
 };
 
-// Clear all stored OKR data
+// Clear all stored OKR boards
 export const clearOKRBoards = async (userId: string): Promise<void> => {
   try {
     // Get user's boards
@@ -108,4 +108,39 @@ export const createBoard = async (userId: string, name: string, description?: st
 
   toast.success('Board created successfully');
   return data.id;
+};
+
+// Update an existing board
+export const updateBoard = async (boardId: number, updates: { name?: string; description?: string }) => {
+  const { error } = await supabase
+    .from('okr_boards')
+    .update(updates)
+    .eq('id', boardId);
+
+  if (error) {
+    console.error('Failed to update board:', error);
+    toast.error('Failed to update board');
+    throw error;
+  }
+
+  toast.success('Board updated successfully');
+};
+
+// Delete a board and all its associated data
+export const deleteBoard = async (boardId: number) => {
+  try {
+    // Delete the board (cascades to objectives, key results, and edges)
+    const { error } = await supabase
+      .from('okr_boards')
+      .delete()
+      .eq('id', boardId);
+
+    if (error) throw error;
+    
+    toast.success('Board deleted successfully');
+  } catch (error) {
+    console.error('Failed to delete board:', error);
+    toast.error('Failed to delete board');
+    throw error;
+  }
 };

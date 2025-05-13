@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown } from 'lucide-react';
+import { Plus, ChevronDown, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUserBoards, createBoard } from '../services/boardService';
+import { getUserBoards, createBoard, updateBoard, deleteBoard } from '../services/boardService';
 import { supabase } from '../services/supabaseClient';
 import {
   DropdownMenu,
@@ -11,6 +12,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import {
@@ -25,6 +29,16 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 interface Board {
   id: number;
@@ -41,11 +55,15 @@ interface BoardSelectorProps {
 const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardChange }) => {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newBoardOpen, setNewBoardOpen] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
-  const [newBoardDescription, setNewBoardDescription] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [boardName, setBoardName] = useState('');
+  const [boardDescription, setBoardDescription] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingBoardId, setEditingBoardId] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingBoardId, setDeletingBoardId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Get current user
@@ -104,36 +122,86 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
     }
   };
 
-  const handleCreateBoard = async () => {
+  const handleOpenDialog = (isEdit = false, board?: Board) => {
+    setIsEditing(isEdit);
+    if (isEdit && board) {
+      setBoardName(board.name);
+      setBoardDescription(board.description || '');
+      setEditingBoardId(board.id);
+    } else {
+      setBoardName('');
+      setBoardDescription('');
+      setEditingBoardId(null);
+    }
+    setDialogOpen(true);
+  };
+
+  const handleSaveBoard = async () => {
     if (!userId) {
       toast.error('You must be logged in to create a board');
       return;
     }
 
-    if (!newBoardName.trim()) {
+    if (!boardName.trim()) {
       toast.error('Board name is required');
       return;
     }
 
     try {
-      const boardId = await createBoard(
-        userId, 
-        newBoardName.trim(), 
-        newBoardDescription.trim() || undefined
-      );
+      if (isEditing && editingBoardId) {
+        // Update existing board
+        await updateBoard(editingBoardId, {
+          name: boardName.trim(),
+          description: boardDescription.trim() || undefined
+        });
+      } else {
+        // Create new board
+        const boardId = await createBoard(
+          userId, 
+          boardName.trim(), 
+          boardDescription.trim() || undefined
+        );
+        
+        // Select the newly created board
+        if (onBoardChange) onBoardChange(boardId);
+      }
       
-      setNewBoardOpen(false);
-      setNewBoardName('');
-      setNewBoardDescription('');
+      setDialogOpen(false);
+      setBoardName('');
+      setBoardDescription('');
       
-      // Reload boards to include the new one
+      // Reload boards to reflect changes
       await loadBoards();
-      
-      // Select the newly created board
-      if (onBoardChange) onBoardChange(boardId);
     } catch (error) {
-      console.error('Failed to create board:', error);
+      console.error('Failed to save board:', error);
     }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!deletingBoardId) return;
+    
+    try {
+      await deleteBoard(deletingBoardId);
+      
+      // If the deleted board was the current board, select another one
+      if (currentBoard?.id === deletingBoardId && boards.length > 1) {
+        const newBoardId = boards.find(b => b.id !== deletingBoardId)?.id;
+        if (newBoardId && onBoardChange) {
+          onBoardChange(newBoardId);
+        }
+      }
+      
+      // Reload boards
+      await loadBoards();
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to delete board:', error);
+    }
+  };
+
+  const handleConfirmDelete = (boardId: number) => {
+    setDeletingBoardId(boardId);
+    setDeleteDialogOpen(true);
   };
 
   const handleSelectBoard = (board: Board) => {
@@ -157,15 +225,54 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
         <DropdownMenuContent className="w-56">
           <DropdownMenuLabel>Your Boards</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          
+          {/* Add New Board option */}
+          <DropdownMenuItem onSelect={() => handleOpenDialog(false)}>
+            <Plus className="h-4 w-4 mr-2" />
+            <span>Add New Board</span>
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
           {boards.length > 0 ? (
             boards.map((board) => (
-              <DropdownMenuItem 
-                key={board.id}
-                onClick={() => handleSelectBoard(board)}
-                className={currentBoard?.id === board.id ? 'bg-muted' : ''}
-              >
-                {board.name}
-              </DropdownMenuItem>
+              <div key={board.id} className="flex items-center justify-between">
+                <DropdownMenuItem 
+                  className="flex-1"
+                  onClick={() => handleSelectBoard(board)}
+                >
+                  <span className={currentBoard?.id === board.id ? 'font-medium' : ''}>
+                    {board.name}
+                  </span>
+                </DropdownMenuItem>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[160px]">
+                    <DropdownMenuItem onClick={() => handleOpenDialog(true, board)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleConfirmDelete(board.id)}
+                      className="text-red-600 focus:text-red-600"
+                      disabled={boards.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ))
           ) : (
             <DropdownMenuItem disabled>No boards available</DropdownMenuItem>
@@ -173,18 +280,16 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={newBoardOpen} onOpenChange={setNewBoardOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" className="px-2 flex items-center gap-1">
-            <Plus className="h-4 w-4" />
-            <span>Add Board</span>
-          </Button>
-        </DialogTrigger>
+      {/* Dialog for Creating/Editing Board */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create a New Board</DialogTitle>
+            <DialogTitle>{isEditing ? 'Edit Board' : 'Create a New Board'}</DialogTitle>
             <DialogDescription>
-              Add a new OKR board to manage your objectives and key results.
+              {isEditing 
+                ? 'Update your board details below.'
+                : 'Add a new OKR board to manage your objectives and key results.'
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -193,8 +298,8 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
               <Label htmlFor="name">Name</Label>
               <Input 
                 id="name" 
-                value={newBoardName}
-                onChange={(e) => setNewBoardName(e.target.value)}
+                value={boardName}
+                onChange={(e) => setBoardName(e.target.value)}
                 placeholder="Enter board name"
                 autoComplete="off"
               />
@@ -204,8 +309,8 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea 
                 id="description"
-                value={newBoardDescription}
-                onChange={(e) => setNewBoardDescription(e.target.value)}
+                value={boardDescription}
+                onChange={(e) => setBoardDescription(e.target.value)}
                 placeholder="Enter board description"
                 rows={3}
               />
@@ -213,15 +318,37 @@ const BoardSelector: React.FC<BoardSelectorProps> = ({ currentBoardId, onBoardCh
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewBoardOpen(false)}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateBoard}>
-              Create Board
+            <Button onClick={handleSaveBoard}>
+              {isEditing ? 'Update' : 'Create'} Board
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog for Deleting Board */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Board</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this board and all its objectives and key results.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteBoard}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
