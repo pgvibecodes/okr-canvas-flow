@@ -12,6 +12,7 @@ interface OKRNodeHandlerProps {
   setNodes: React.Dispatch<React.SetStateAction<any[]>>;
   setEdges: React.Dispatch<React.SetStateAction<any[]>>;
   updateObjectiveProgress: (objectiveId: string) => void;
+  currentBoardId?: number; // Make boardId available
 }
 
 function OKRNodeHandler({
@@ -21,6 +22,7 @@ function OKRNodeHandler({
   setNodes,
   setEdges,
   updateObjectiveProgress,
+  currentBoardId,
 }: OKRNodeHandlerProps) {
   const addNewObjective = useCallback(
     (position) => {
@@ -33,10 +35,10 @@ function OKRNodeHandler({
       // Save changes to database
       setTimeout(() => {
         const updatedNodes = [...nodes, newNode];
-        saveOKRData(updatedNodes, edges);
+        saveOKRData(updatedNodes, edges, currentBoardId);
       }, 100);
     },
-    [reactFlowInstance, setNodes, nodes, edges]
+    [reactFlowInstance, setNodes, nodes, edges, currentBoardId]
   );
 
   const addKeyResult = useCallback(
@@ -80,10 +82,10 @@ function OKRNodeHandler({
       setTimeout(() => {
         const updatedNodes = [...nodes, newNode];
         const updatedEdges = [...edges, newEdge];
-        saveOKRData(updatedNodes, updatedEdges);
+        saveOKRData(updatedNodes, updatedEdges, currentBoardId);
       }, 200);
     },
-    [nodes, edges, setNodes, setEdges, updateObjectiveProgress]
+    [nodes, edges, setNodes, setEdges, updateObjectiveProgress, currentBoardId]
   );
 
   return { addNewObjective, addKeyResult };

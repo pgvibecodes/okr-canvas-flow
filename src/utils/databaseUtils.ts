@@ -34,14 +34,14 @@ export const saveOKRData = async (nodes: Node[], edges: Edge[], boardId?: number
 
       // Clear existing data for this board (this is a simple approach, could be optimized)
       await deleteEdges(actualBoardId);
-      await deleteKeyResults(user.id);
+      await deleteKeyResults(actualBoardId);
       await deleteObjectives(actualBoardId);
 
       // Insert objectives
       await saveObjectives(objectives, user.id, actualBoardId);
 
-      // Insert key results
-      await saveKeyResults(keyResults, edges, nodes, user.id);
+      // Insert key results - pass the board ID to ensure they're associated with the correct board
+      await saveKeyResults(keyResults, edges, nodes, user.id, actualBoardId);
 
       // Insert edges
       await saveEdges(edges, user.id, actualBoardId);
@@ -109,8 +109,8 @@ export const loadOKRData = async (boardId?: number): Promise<OKRData | null> => 
     // Load objectives from the database
     const objectivesNodes = await loadObjectives(actualBoardId);
 
-    // Load key results from the database
-    const keyResultNodes = await loadKeyResults(user.id);
+    // Load key results from the database - pass the board ID to filter results
+    const keyResultNodes = await loadKeyResults(user.id, actualBoardId);
 
     // Load edges from the database
     const edgesData = await loadEdges(actualBoardId);
@@ -146,11 +146,19 @@ export const clearOKRData = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // Pass boardId parameter to deleteEdges - This fixes line 149
-      await deleteEdges(null); // Pass null as we want to delete all edges for the user
-      await deleteKeyResults(user.id);
-      // Pass boardId parameter to deleteObjectives - This fixes line 151
-      await deleteObjectives(null); // Pass null as we want to delete all objectives for the user
+      // Need to delete all boards for the user
+      const { data: boards } = await supabase
+        .from('okr_boards')
+        .select('id')
+        .eq('user_id', user.id);
+        
+      if (boards && boards.length > 0) {
+        for (const board of boards) {
+          await deleteEdges(board.id);
+          await deleteKeyResults(board.id);
+          await deleteObjectives(board.id);
+        }
+      }
     }
     
     // Always clear localStorage as well
@@ -163,4 +171,3 @@ export const clearOKRData = async (): Promise<void> => {
     toast.error('Failed to clear your data');
   }
 };
-

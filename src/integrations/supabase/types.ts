@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       key_results: {
         Row: {
+          board_id: number
           created_at: string | null
           department: string | null
           description: string | null
@@ -25,6 +26,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          board_id: number
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -39,6 +41,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          board_id?: number
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -53,6 +56,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "key_results_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "okr_boards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "key_results_objective_id_fkey"
             columns: ["objective_id"]

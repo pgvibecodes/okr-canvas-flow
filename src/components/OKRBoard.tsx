@@ -50,7 +50,8 @@ const OKRBoard = () => {
   } = OKRConnectionHandler({
     nodes,
     setEdges,
-    updateObjectiveProgress
+    updateObjectiveProgress,
+    currentBoardId // Pass currentBoardId
   });
 
   // Use the node handler
@@ -63,7 +64,8 @@ const OKRBoard = () => {
     edges,
     setNodes,
     setEdges,
-    updateObjectiveProgress
+    updateObjectiveProgress,
+    currentBoardId // Pass currentBoardId
   });
 
   // Load saved data when board changes
@@ -80,7 +82,7 @@ const OKRBoard = () => {
         }
       });
     }
-  }, [currentBoardId, loadBoardData]);
+  }, [currentBoardId, loadBoardData, setNodes, setEdges]);
 
   // Track changes in nodes and edges to determine if there are unsaved changes
   useEffect(() => {
@@ -97,7 +99,7 @@ const OKRBoard = () => {
         setEdges(data.edges || []);
       }
     });
-  }, [nodes, edges, handleBoardChange]);
+  }, [nodes, edges, handleBoardChange, setNodes, setEdges]);
 
   const onDragOver = useCallback(event => {
     event.preventDefault();
@@ -133,7 +135,7 @@ const OKRBoard = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [nodes, edges, unsavedChanges, currentBoardId]);
+  }, [nodes, edges, unsavedChanges, currentBoardId, setUnsavedChanges]);
   
   if (isLoading) {
     return <LoadingIndicator />;

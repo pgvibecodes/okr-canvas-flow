@@ -8,9 +8,15 @@ interface OKRConnectionHandlerProps {
   nodes: Node[];
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   updateObjectiveProgress: (objectiveId: string) => void;
+  currentBoardId?: number; // Add currentBoardId
 }
 
-function OKRConnectionHandler({ nodes, setEdges, updateObjectiveProgress }: OKRConnectionHandlerProps) {
+function OKRConnectionHandler({ 
+  nodes, 
+  setEdges, 
+  updateObjectiveProgress,
+  currentBoardId 
+}: OKRConnectionHandlerProps) {
   const onConnect = useCallback(
     (params: Connection) => {
       // Get source and target nodes
@@ -43,9 +49,9 @@ function OKRConnectionHandler({ nodes, setEdges, updateObjectiveProgress }: OKRC
           markerEnd: { type: MarkerType.ArrowClosed },
         }, eds);
         
-        // Save changes to database after adding connection
+        // Save changes to database
         setTimeout(() => {
-          saveOKRData(nodes, newEdges);
+          saveOKRData(nodes, newEdges, currentBoardId);
         }, 100);
         
         return newEdges;
@@ -63,7 +69,7 @@ function OKRConnectionHandler({ nodes, setEdges, updateObjectiveProgress }: OKRC
         }
       }, 100);
     },
-    [nodes, setEdges, updateObjectiveProgress]
+    [nodes, setEdges, updateObjectiveProgress, currentBoardId]
   );
 
   return { onConnect };

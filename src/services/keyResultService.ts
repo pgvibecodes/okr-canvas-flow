@@ -4,11 +4,12 @@ import { supabase } from './supabaseClient';
 import { KeyResult } from './okrTypes';
 
 // Convert xyflow Node to database format for key results
-export const prepareKeyResultForDb = (node: Node, userId: string, objectiveId: string): KeyResult => {
+export const prepareKeyResultForDb = (node: Node, userId: string, objectiveId: string, boardId: number): KeyResult => {
   return {
     id: node.id,
     objective_id: objectiveId,
     user_id: userId,
+    board_id: boardId, // Add board_id
     label: typeof node.data?.label === 'string' ? node.data.label : 'New Key Result',
     description: typeof node.data?.description === 'string' ? node.data.description : '',
     progress: typeof node.data?.progress === 'number' ? node.data.progress : 0,
@@ -40,7 +41,8 @@ export const saveKeyResults = async (
   keyResults: Node[],
   edges: Edge[],
   nodes: Node[],
-  userId: string
+  userId: string,
+  boardId: number // Add boardId parameter
 ): Promise<void> => {
   if (keyResults.length > 0) {
     // Find the objective each key result belongs to
@@ -55,11 +57,11 @@ export const saveKeyResults = async (
       
       if (edge) {
         const objectiveId = edge.source === kr.id ? edge.target : edge.source;
-        keyResultInserts.push(prepareKeyResultForDb(kr, userId, objectiveId));
+        keyResultInserts.push(prepareKeyResultForDb(kr, userId, objectiveId, boardId)); // Pass boardId
       } else {
         // Fallback if no edge found (shouldn't happen in well-formed data)
         console.warn(`No connected objective found for key result ${kr.id}`);
-        keyResultInserts.push(prepareKeyResultForDb(kr, userId, 'unknown'));
+        keyResultInserts.push(prepareKeyResultForDb(kr, userId, 'unknown', boardId)); // Pass boardId
       }
     }
     
@@ -74,11 +76,12 @@ export const saveKeyResults = async (
 };
 
 // Load key results from database
-export const loadKeyResults = async (userId: string): Promise<Node[]> => {
+export const loadKeyResults = async (userId: string, boardId: number): Promise<Node[]> => {
   const { data, error } = await supabase
     .from('key_results')
     .select('*')
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('board_id', boardId); // Filter by board_id
 
   if (error) {
     throw new Error(`Failed to load key results: ${error.message}`);
@@ -87,12 +90,12 @@ export const loadKeyResults = async (userId: string): Promise<Node[]> => {
   return data.map(kr => convertDbKeyResultToNode(kr));
 };
 
-// Delete key results for a user
-export const deleteKeyResults = async (userId: string): Promise<void> => {
+// Delete key results for a specific board
+export const deleteKeyResults = async (boardId: number): Promise<void> => {
   const { error } = await supabase
     .from('key_results')
     .delete()
-    .eq('user_id', userId);
+    .eq('board_id', boardId);
   
   if (error) throw error;
 };
