@@ -11,6 +11,9 @@ import useBoardManager from '../hooks/useBoardManager';
 import BoardControls from './BoardControls';
 import LoadingIndicator from './LoadingIndicator';
 import { saveOKRData } from '../utils/databaseUtils';
+import BoardShareDialog from './BoardShareDialog';
+import { Button } from './ui/button';
+import { Share } from 'lucide-react';
 
 const nodeTypes = {
   objective: ObjectiveNode,
@@ -26,6 +29,7 @@ const OKRBoard = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
@@ -251,6 +255,20 @@ const OKRBoard = () => {
         <Controls />
         <Background gap={16} color="#f1f5f9" />
         
+        {/* Top panel with share button */}
+        <Panel position="top-right" className="mr-2 mt-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-2 bg-white shadow-sm"
+            onClick={() => setIsShareDialogOpen(true)}
+            disabled={!isAuthenticated || !currentBoardId}
+          >
+            <Share className="h-4 w-4" />
+            Share
+          </Button>
+        </Panel>
+        
         {/* Bottom panel with board selector and add objective button */}
         <Panel position="bottom-center" className="bg-white rounded-lg shadow-lg p-2 mb-4">
           <BoardControls
@@ -264,6 +282,12 @@ const OKRBoard = () => {
           />
         </Panel>
       </ReactFlow>
+      
+      <BoardShareDialog 
+        isOpen={isShareDialogOpen} 
+        onClose={() => setIsShareDialogOpen(false)}
+        boardId={currentBoardId}
+      />
     </div>
   );
 };
