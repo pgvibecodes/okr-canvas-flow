@@ -3,6 +3,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from './ui/button';
 import BoardSelector from './BoardSelector';
+import DepartmentFilter from './DepartmentFilter';
 import { AlertCircle } from 'lucide-react';
 
 interface BoardControlsProps {
@@ -10,17 +11,29 @@ interface BoardControlsProps {
   onBoardChange: (boardId: number) => void;
   onAddObjective: () => void;
   isAuthenticated: boolean;
+  nodes: any[];
+  departmentFilter: string | null;
+  onFilterChange: (department: string | null) => void;
 }
 
 const BoardControls: React.FC<BoardControlsProps> = ({
   currentBoardId,
   onBoardChange,
   onAddObjective,
-  isAuthenticated
+  isAuthenticated,
+  nodes,
+  departmentFilter,
+  onFilterChange
 }) => {
   return (
     <div className="flex items-center gap-4">
       <BoardSelector currentBoardId={currentBoardId} onBoardChange={onBoardChange} />
+      
+      <DepartmentFilter 
+        nodes={nodes} 
+        currentFilter={departmentFilter} 
+        onFilterChange={onFilterChange} 
+      />
       
       <Button 
         onClick={onAddObjective} 

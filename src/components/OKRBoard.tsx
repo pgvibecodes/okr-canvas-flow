@@ -23,6 +23,9 @@ const initialEdges = [];
 const OKRBoard = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
+  const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
+  const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
@@ -51,7 +54,7 @@ const OKRBoard = () => {
     nodes,
     setEdges,
     updateObjectiveProgress,
-    currentBoardId // Pass currentBoardId
+    currentBoardId
   });
 
   // Use the node handler
@@ -65,8 +68,78 @@ const OKRBoard = () => {
     setNodes,
     setEdges,
     updateObjectiveProgress,
-    currentBoardId // Pass currentBoardId
+    currentBoardId
   });
+
+  // Filter nodes based on department
+  useEffect(() => {
+    if (!departmentFilter) {
+      // No filter, show all nodes
+      setFilteredNodes(nodes);
+      setFilteredEdges(edges);
+      return;
+    }
+
+    // Step 1: Find all nodes of the selected department
+    const nodesWithDepartment = nodes.filter(node => 
+      node.data?.department === departmentFilter
+    );
+    
+    const relevantNodeIds = new Set<string>();
+    
+    // Step 2: Add all the department nodes to our set
+    nodesWithDepartment.forEach(node => {
+      relevantNodeIds.add(node.id);
+    });
+    
+    // Step 3: For objectives in the department, add all child nodes
+    const addChildrenRecursively = (nodeId: string) => {
+      // Find all connections where this node is a source
+      const childConnections = edges.filter(edge => edge.source === nodeId);
+      
+      childConnections.forEach(connection => {
+        const targetId = connection.target;
+        if (!relevantNodeIds.has(targetId)) {
+          relevantNodeIds.add(targetId);
+          // Recursively add children of this node
+          addChildrenRecursively(targetId);
+        }
+      });
+    };
+    
+    // Step 4: For key results in the department, add all parent objectives
+    const addParentsRecursively = (nodeId: string) => {
+      // Find all connections where this node is a target
+      const parentConnections = edges.filter(edge => edge.target === nodeId);
+      
+      parentConnections.forEach(connection => {
+        const sourceId = connection.source;
+        if (!relevantNodeIds.has(sourceId)) {
+          relevantNodeIds.add(sourceId);
+          // Recursively add parents of this node
+          addParentsRecursively(sourceId);
+        }
+      });
+    };
+    
+    // Apply the recursive functions to the department nodes
+    nodesWithDepartment.forEach(node => {
+      if (node.type === 'objective') {
+        addChildrenRecursively(node.id);
+      } else if (node.type === 'keyResult') {
+        addParentsRecursively(node.id);
+      }
+    });
+    
+    // Filter nodes and edges based on our set of relevant node IDs
+    const filteredNodes = nodes.filter(node => relevantNodeIds.has(node.id));
+    const filteredEdges = edges.filter(edge => 
+      relevantNodeIds.has(edge.source) && relevantNodeIds.has(edge.target)
+    );
+    
+    setFilteredNodes(filteredNodes);
+    setFilteredEdges(filteredEdges);
+  }, [departmentFilter, nodes, edges]);
 
   // Load saved data when board changes
   useEffect(() => {
@@ -137,15 +210,24 @@ const OKRBoard = () => {
     }
   }, [nodes, edges, unsavedChanges, currentBoardId, setUnsavedChanges]);
   
+  // Handle department filter change
+  const handleDepartmentFilterChange = useCallback((department: string | null) => {
+    setDepartmentFilter(department);
+  }, []);
+  
   if (isLoading) {
     return <LoadingIndicator />;
   }
   
+  // Determine which nodes and edges to display
+  const displayNodes = departmentFilter ? filteredNodes : nodes;
+  const displayEdges = departmentFilter ? filteredEdges : edges;
+  
   return (
     <div className="h-full w-full" ref={reactFlowWrapper}>
       <ReactFlow 
-        nodes={nodes} 
-        edges={edges} 
+        nodes={displayNodes} 
+        edges={displayEdges} 
         onNodesChange={onNodesChange} 
         onEdgesChange={onEdgesChange} 
         onConnect={onConnect} 
@@ -176,6 +258,9 @@ const OKRBoard = () => {
             onBoardChange={handleBoardSelected}
             onAddObjective={() => addNewObjective({ x: 100, y: 100 })}
             isAuthenticated={isAuthenticated}
+            nodes={nodes}
+            departmentFilter={departmentFilter}
+            onFilterChange={handleDepartmentFilterChange}
           />
         </Panel>
       </ReactFlow>
