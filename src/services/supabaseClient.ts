@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { MarkerType } from '@xyflow/react';
 
@@ -39,6 +38,7 @@ export interface KeyResult {
   id: string;
   objective_id: string;
   user_id: string;
+  board_id: number; // Add board_id to reflect our database change
   label: string;
   description?: string;
   progress?: number;

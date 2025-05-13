@@ -9,7 +9,7 @@ export const prepareKeyResultForDb = (node: Node, userId: string, objectiveId: s
     id: node.id,
     objective_id: objectiveId,
     user_id: userId,
-    board_id: boardId, // Add board_id
+    board_id: boardId,
     label: typeof node.data?.label === 'string' ? node.data.label : 'New Key Result',
     description: typeof node.data?.description === 'string' ? node.data.description : '',
     progress: typeof node.data?.progress === 'number' ? node.data.progress : 0,
@@ -42,7 +42,7 @@ export const saveKeyResults = async (
   edges: Edge[],
   nodes: Node[],
   userId: string,
-  boardId: number // Add boardId parameter
+  boardId: number
 ): Promise<void> => {
   if (keyResults.length > 0) {
     // Find the objective each key result belongs to
@@ -57,11 +57,11 @@ export const saveKeyResults = async (
       
       if (edge) {
         const objectiveId = edge.source === kr.id ? edge.target : edge.source;
-        keyResultInserts.push(prepareKeyResultForDb(kr, userId, objectiveId, boardId)); // Pass boardId
+        keyResultInserts.push(prepareKeyResultForDb(kr, userId, objectiveId, boardId));
       } else {
         // Fallback if no edge found (shouldn't happen in well-formed data)
         console.warn(`No connected objective found for key result ${kr.id}`);
-        keyResultInserts.push(prepareKeyResultForDb(kr, userId, 'unknown', boardId)); // Pass boardId
+        keyResultInserts.push(prepareKeyResultForDb(kr, userId, 'unknown', boardId));
       }
     }
     
