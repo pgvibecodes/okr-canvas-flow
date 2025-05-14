@@ -2,23 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Check, Share, User, X } from 'lucide-react';
-import { Input } from './ui/input';
+import { Share } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Define permission type as a union of allowed values to match database constraint
-type Permission = 'view' | 'edit';
-
-interface BoardShare {
-  id: number;
-  board_id: number;
-  user_email: string;
-  permission: Permission; // This should match the database type
-  created_at?: string;
-}
+import ShareForm, { Permission } from './board-share/ShareForm';
+import SharedUsersList, { BoardShare } from './board-share/SharedUsersList';
 
 interface BoardShareDialogProps {
   isOpen: boolean;
@@ -27,11 +16,8 @@ interface BoardShareDialogProps {
 }
 
 const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, boardId }) => {
-  const [email, setEmail] = useState('');
-  const [permission, setPermission] = useState<Permission>('view');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<BoardShare[]>([]);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   // Fetch existing shares when dialog opens or boardId changes
   useEffect(() => {
@@ -63,16 +49,12 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
     }
   };
 
-  const handleShareBoard = async () => {
+  const handleShareBoard = async (email: string, permission: Permission) => {
     if (!email || !boardId) return;
     
     setIsSubmitting(true);
     
     try {
-      // Check if user exists in auth system
-      // Note: Since we can't directly query auth.users, we'll skip this check in this implementation
-      // In a real app, you might want to implement an edge function for this validation
-      
       // Check if share already exists
       const { data: existingShare } = await supabase
         .from('board_shares')
@@ -112,9 +94,6 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
           fetchSharedUsers();
         }
       }
-      
-      setEmail('');
-      setPermission('view');
     } catch (error) {
       console.error('Error sharing board:', error);
       toast.error('An error occurred while sharing the board');
@@ -155,82 +134,15 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1"
-          />
-          
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                {permission === 'view' ? 'Can view' : 'Can edit'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-0" align="end">
-              <div className="flex flex-col">
-                <button
-                  className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100"
-                  onClick={() => {
-                    setPermission('view');
-                    setIsPopoverOpen(false);
-                  }}
-                >
-                  Can view
-                  {permission === 'view' && <Check className="w-4 h-4" />}
-                </button>
-                <button
-                  className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100"
-                  onClick={() => {
-                    setPermission('edit');
-                    setIsPopoverOpen(false);
-                  }}
-                >
-                  Can edit
-                  {permission === 'edit' && <Check className="w-4 h-4" />}
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Button 
-            onClick={handleShareBoard} 
-            disabled={!email || isSubmitting}
-          >
-            Share
-          </Button>
-        </div>
+        <ShareForm 
+          onShare={handleShareBoard} 
+          isSubmitting={isSubmitting} 
+        />
         
-        {sharedUsers.length > 0 && (
-          <div className="mt-4">
-            <h4 className="mb-2 text-sm font-medium">Shared with</h4>
-            <div className="flex flex-col gap-2">
-              {sharedUsers.map((share) => (
-                <div key={share.id} className="flex items-center justify-between p-2 border rounded-md">
-                  <div className="flex items-center gap-2">
-                    <User size={16} />
-                    <span>{share.user_email}</span>
-                    <Badge 
-                      variant={share.permission === 'edit' ? 'default' : 'secondary'}
-                      className="ml-2"
-                    >
-                      {share.permission === 'edit' ? 'Editor' : 'Viewer'}
-                    </Badge>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => handleRemoveShare(share.id)}
-                  >
-                    <X size={16} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <SharedUsersList 
+          sharedUsers={sharedUsers}
+          onRemoveShare={handleRemoveShare}
+        />
         
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>Close</Button>
