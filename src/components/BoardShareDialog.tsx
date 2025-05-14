@@ -9,13 +9,14 @@ import { Input } from './ui/input';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Define permission type as a union of allowed values to match database constraint
 type Permission = 'view' | 'edit';
 
 interface BoardShare {
   id: number;
   board_id: number;
   user_email: string;
-  permission: Permission;
+  permission: Permission; // This should match the database type
   created_at?: string;
 }
 
@@ -52,7 +53,9 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
         console.error('Error fetching shared users:', error);
         toast.error('Failed to load shared users');
       } else {
-        setSharedUsers(data || []);
+        // Cast the data to ensure it matches our BoardShare type
+        // The permission from DB is guaranteed to be either 'view' or 'edit' by the CHECK constraint
+        setSharedUsers((data || []) as BoardShare[]);
       }
     } catch (error) {
       console.error('Failed to fetch shared users:', error);
