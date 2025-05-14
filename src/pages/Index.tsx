@@ -58,6 +58,12 @@ const Index = () => {
         <>
           <div className="flex justify-between p-2 bg-white shadow-sm">
             <div className="flex items-center">
+              {/* Empty div to maintain the space between layout */}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                {session.user.email}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -67,11 +73,6 @@ const Index = () => {
                 <Share className="h-4 w-4" />
                 Share
               </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
-                {session.user.email}
-              </span>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-1" />
                 Sign Out
