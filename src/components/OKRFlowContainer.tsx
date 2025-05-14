@@ -1,7 +1,6 @@
 
 import React, { useRef } from 'react';
 import { ReactFlow, Background, Controls, Panel, ConnectionLineType, MarkerType } from '@xyflow/react';
-import { Share } from 'lucide-react';
 import { Button } from './ui/button';
 import BoardControls from './BoardControls';
 
@@ -73,20 +72,6 @@ const OKRFlowContainer: React.FC<OKRFlowContainerProps> = ({
       >
         <Controls />
         <Background gap={16} color="#f1f5f9" />
-        
-        {/* Top panel with share button */}
-        <Panel position="top-right" className="mr-2 mt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-2 bg-white shadow-sm"
-            onClick={() => setIsShareDialogOpen(true)}
-            disabled={!isAuthenticated || !currentBoardId}
-          >
-            <Share className="h-4 w-4" />
-            Share
-          </Button>
-        </Panel>
         
         {/* Bottom panel with board selector and add objective button */}
         <Panel position="bottom-center" className="bg-white rounded-lg shadow-lg p-2 mb-4">

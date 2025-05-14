@@ -4,12 +4,13 @@ import OKRBoard from '../components/OKRBoard';
 import AuthPanel from '../components/AuthPanel';
 import { supabase } from '../integrations/supabase/client';
 import { Button } from '../components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, Share } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Index = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   useEffect(() => {
     // Check for an existing session
@@ -55,7 +56,18 @@ const Index = () => {
     <div className="h-screen w-screen flex flex-col">
       {session ? (
         <>
-          <div className="flex justify-end p-2 bg-white shadow-sm">
+          <div className="flex justify-between p-2 bg-white shadow-sm">
+            <div className="flex items-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2 bg-white shadow-sm"
+                onClick={() => setIsShareDialogOpen(true)}
+              >
+                <Share className="h-4 w-4" />
+                Share
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
                 {session.user.email}
@@ -67,7 +79,10 @@ const Index = () => {
             </div>
           </div>
           <div className="flex-1">
-            <OKRBoard />
+            <OKRBoard 
+              isShareDialogOpen={isShareDialogOpen} 
+              setIsShareDialogOpen={setIsShareDialogOpen}
+            />
           </div>
         </>
       ) : (

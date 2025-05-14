@@ -14,6 +14,11 @@ import OKRFlowContainer from './OKRFlowContainer';
 import useDepartmentFilter from '../hooks/useDepartmentFilter';
 import useAutoSave from '../hooks/useAutoSave';
 
+interface OKRBoardProps {
+  isShareDialogOpen: boolean;
+  setIsShareDialogOpen: (isOpen: boolean) => void;
+}
+
 const nodeTypes = {
   objective: ObjectiveNode,
   keyResult: KeyResultNode
@@ -22,10 +27,9 @@ const nodeTypes = {
 const initialNodes = [];
 const initialEdges = [];
 
-const OKRBoard = () => {
+const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialogOpen }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Use the board manager hook
