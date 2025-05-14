@@ -42,16 +42,21 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
   const fetchSharedUsers = async () => {
     if (!boardId) return;
     
-    const { data, error } = await supabase
-      .from('board_shares')
-      .select('*')
-      .eq('board_id', boardId);
-      
-    if (error) {
-      console.error('Error fetching shared users:', error);
-      toast.error('Failed to load shared users');
-    } else {
-      setSharedUsers(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('board_shares')
+        .select('*')
+        .eq('board_id', boardId);
+        
+      if (error) {
+        console.error('Error fetching shared users:', error);
+        toast.error('Failed to load shared users');
+      } else {
+        setSharedUsers(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch shared users:', error);
+      toast.error('An error occurred while loading shared users');
     }
   };
 
@@ -61,18 +66,9 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
     setIsSubmitting(true);
     
     try {
-      // Check if user exists by email
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .single();
-      
-      if (userError || !userData) {
-        toast.error('User with this email does not exist');
-        setIsSubmitting(false);
-        return;
-      }
+      // Check if user exists in auth system
+      // Note: Since we can't directly query auth.users, we'll skip this check in this implementation
+      // In a real app, you might want to implement an edge function for this validation
       
       // Check if share already exists
       const { data: existingShare } = await supabase
@@ -90,6 +86,7 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
           
         if (updateError) {
           toast.error('Failed to update share');
+          console.error('Error updating share:', updateError);
         } else {
           toast.success(`Updated share for ${email}`);
           fetchSharedUsers();
@@ -106,6 +103,7 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
           
         if (insertError) {
           toast.error('Failed to share board');
+          console.error('Error sharing board:', insertError);
         } else {
           toast.success(`Board shared with ${email}`);
           fetchSharedUsers();
@@ -123,16 +121,22 @@ const BoardShareDialog: React.FC<BoardShareDialogProps> = ({ isOpen, onClose, bo
   };
 
   const handleRemoveShare = async (id: number) => {
-    const { error } = await supabase
-      .from('board_shares')
-      .delete()
-      .eq('id', id);
-      
-    if (error) {
-      toast.error('Failed to remove user access');
-    } else {
-      toast.success('User access removed');
-      fetchSharedUsers();
+    try {
+      const { error } = await supabase
+        .from('board_shares')
+        .delete()
+        .eq('id', id);
+        
+      if (error) {
+        toast.error('Failed to remove user access');
+        console.error('Error removing share:', error);
+      } else {
+        toast.success('User access removed');
+        fetchSharedUsers();
+      }
+    } catch (error) {
+      console.error('Error removing share:', error);
+      toast.error('An error occurred while removing user access');
     }
   };
 

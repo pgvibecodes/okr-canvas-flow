@@ -9,6 +9,38 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      board_shares: {
+        Row: {
+          board_id: number
+          created_at: string | null
+          id: number
+          permission: string
+          user_email: string
+        }
+        Insert: {
+          board_id: number
+          created_at?: string | null
+          id?: number
+          permission: string
+          user_email: string
+        }
+        Update: {
+          board_id?: number
+          created_at?: string | null
+          id?: number
+          permission?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_shares_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "okr_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       key_results: {
         Row: {
           board_id: number
