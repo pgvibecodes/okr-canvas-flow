@@ -1,6 +1,6 @@
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState, ConnectionLineType, MarkerType, Panel } from '@xyflow/react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ObjectiveNode from './nodes/ObjectiveNode';
 import KeyResultNode from './nodes/KeyResultNode';
@@ -8,12 +8,11 @@ import OKRConnectionHandler from './OKRConnectionHandler';
 import OKRNodeHandler from './OKRNodeHandler';
 import useObjectiveProgress from '../hooks/useObjectiveProgress';
 import useBoardManager from '../hooks/useBoardManager';
-import BoardControls from './BoardControls';
 import LoadingIndicator from './LoadingIndicator';
-import { saveOKRData } from '../utils/databaseUtils';
 import BoardShareDialog from './BoardShareDialog';
-import { Button } from './ui/button';
-import { Share } from 'lucide-react';
+import OKRFlowContainer from './OKRFlowContainer';
+import useDepartmentFilter from '../hooks/useDepartmentFilter';
+import useAutoSave from '../hooks/useAutoSave';
 
 const nodeTypes = {
   objective: ObjectiveNode,
@@ -26,11 +25,7 @@ const initialEdges = [];
 const OKRBoard = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
-  const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
-  const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Use the board manager hook
@@ -50,6 +45,17 @@ const OKRBoard = () => {
     updateObjectiveProgress,
     updateParentObjectives
   } = useObjectiveProgress(nodes, edges, setNodes);
+
+  // Use the department filtering hook
+  const {
+    departmentFilter,
+    setDepartmentFilter,
+    filteredNodes,
+    filteredEdges
+  } = useDepartmentFilter(nodes, edges);
+
+  // Use the auto-save hook
+  useAutoSave(nodes, edges, unsavedChanges, currentBoardId, setUnsavedChanges);
 
   // Use the connection handler
   const {
@@ -74,76 +80,6 @@ const OKRBoard = () => {
     updateObjectiveProgress,
     currentBoardId
   });
-
-  // Filter nodes based on department
-  useEffect(() => {
-    if (!departmentFilter) {
-      // No filter, show all nodes
-      setFilteredNodes(nodes);
-      setFilteredEdges(edges);
-      return;
-    }
-
-    // Step 1: Find all nodes of the selected department
-    const nodesWithDepartment = nodes.filter(node => 
-      node.data?.department === departmentFilter
-    );
-    
-    const relevantNodeIds = new Set<string>();
-    
-    // Step 2: Add all the department nodes to our set
-    nodesWithDepartment.forEach(node => {
-      relevantNodeIds.add(node.id);
-    });
-    
-    // Step 3: For objectives in the department, add all child nodes
-    const addChildrenRecursively = (nodeId: string) => {
-      // Find all connections where this node is a source
-      const childConnections = edges.filter(edge => edge.source === nodeId);
-      
-      childConnections.forEach(connection => {
-        const targetId = connection.target;
-        if (!relevantNodeIds.has(targetId)) {
-          relevantNodeIds.add(targetId);
-          // Recursively add children of this node
-          addChildrenRecursively(targetId);
-        }
-      });
-    };
-    
-    // Step 4: For key results in the department, add all parent objectives
-    const addParentsRecursively = (nodeId: string) => {
-      // Find all connections where this node is a target
-      const parentConnections = edges.filter(edge => edge.target === nodeId);
-      
-      parentConnections.forEach(connection => {
-        const sourceId = connection.source;
-        if (!relevantNodeIds.has(sourceId)) {
-          relevantNodeIds.add(sourceId);
-          // Recursively add parents of this node
-          addParentsRecursively(sourceId);
-        }
-      });
-    };
-    
-    // Apply the recursive functions to the department nodes
-    nodesWithDepartment.forEach(node => {
-      if (node.type === 'objective') {
-        addChildrenRecursively(node.id);
-      } else if (node.type === 'keyResult') {
-        addParentsRecursively(node.id);
-      }
-    });
-    
-    // Filter nodes and edges based on our set of relevant node IDs
-    const filteredNodes = nodes.filter(node => relevantNodeIds.has(node.id));
-    const filteredEdges = edges.filter(edge => 
-      relevantNodeIds.has(edge.source) && relevantNodeIds.has(edge.target)
-    );
-    
-    setFilteredNodes(filteredNodes);
-    setFilteredEdges(filteredEdges);
-  }, [departmentFilter, nodes, edges]);
 
   // Load saved data when board changes
   useEffect(() => {
@@ -190,7 +126,7 @@ const OKRBoard = () => {
   const handleCanvasClick = useCallback(event => {
     // Only add a node if command/ctrl key is pressed during click
     if (event.ctrlKey || event.metaKey) {
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const reactFlowBounds = event.currentTarget.getBoundingClientRect();
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top
@@ -199,25 +135,10 @@ const OKRBoard = () => {
       setUnsavedChanges(true);
     }
   }, [addNewObjective, reactFlowInstance, setUnsavedChanges]);
-
-  // Auto-save functionality
-  useEffect(() => {
-    // Only save if there are nodes or edges to save, there are unsaved changes, and a board is selected
-    if (unsavedChanges && (nodes.length > 0 || edges.length > 0) && currentBoardId) {
-      const timeoutId = setTimeout(async () => {
-        await saveOKRData(nodes, edges, currentBoardId);
-        setUnsavedChanges(false);
-        console.log('Auto-saved OKR data');
-      }, 5000); // Auto-save after 5 seconds of inactivity
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [nodes, edges, unsavedChanges, currentBoardId, setUnsavedChanges]);
   
-  // Handle department filter change
   const handleDepartmentFilterChange = useCallback((department: string | null) => {
     setDepartmentFilter(department);
-  }, []);
+  }, [setDepartmentFilter]);
   
   if (isLoading) {
     return <LoadingIndicator />;
@@ -228,67 +149,33 @@ const OKRBoard = () => {
   const displayEdges = departmentFilter ? filteredEdges : edges;
   
   return (
-    <div className="h-full w-full" ref={reactFlowWrapper}>
-      <ReactFlow 
-        nodes={displayNodes} 
-        edges={displayEdges} 
-        onNodesChange={onNodesChange} 
-        onEdgesChange={onEdgesChange} 
-        onConnect={onConnect} 
-        onInit={onInit} 
-        onDragOver={onDragOver} 
-        nodeTypes={nodeTypes} 
+    <>
+      <OKRFlowContainer
+        nodes={displayNodes}
+        edges={displayEdges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onInit={onInit}
+        onDragOver={onDragOver}
         onClick={handleCanvasClick}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        defaultEdgeOptions={{
-          type: 'smoothstep',
-          style: {
-            stroke: '#6366f1',
-            strokeWidth: 2
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed
-          }
-        }}
-        fitView
-      >
-        <Controls />
-        <Background gap={16} color="#f1f5f9" />
-        
-        {/* Top panel with share button */}
-        <Panel position="top-right" className="mr-2 mt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-2 bg-white shadow-sm"
-            onClick={() => setIsShareDialogOpen(true)}
-            disabled={!isAuthenticated || !currentBoardId}
-          >
-            <Share className="h-4 w-4" />
-            Share
-          </Button>
-        </Panel>
-        
-        {/* Bottom panel with board selector and add objective button */}
-        <Panel position="bottom-center" className="bg-white rounded-lg shadow-lg p-2 mb-4">
-          <BoardControls
-            currentBoardId={currentBoardId}
-            onBoardChange={handleBoardSelected}
-            onAddObjective={() => addNewObjective({ x: 100, y: 100 })}
-            isAuthenticated={isAuthenticated}
-            nodes={nodes}
-            departmentFilter={departmentFilter}
-            onFilterChange={handleDepartmentFilterChange}
-          />
-        </Panel>
-      </ReactFlow>
+        nodeTypes={nodeTypes}
+        isShareDialogOpen={isShareDialogOpen}
+        setIsShareDialogOpen={setIsShareDialogOpen}
+        currentBoardId={currentBoardId}
+        onBoardChange={handleBoardSelected}
+        onAddObjective={() => addNewObjective({ x: 100, y: 100 })}
+        isAuthenticated={isAuthenticated}
+        departmentFilter={departmentFilter}
+        onFilterChange={handleDepartmentFilterChange}
+      />
       
       <BoardShareDialog 
         isOpen={isShareDialogOpen} 
         onClose={() => setIsShareDialogOpen(false)}
         boardId={currentBoardId}
       />
-    </div>
+    </>
   );
 };
 
