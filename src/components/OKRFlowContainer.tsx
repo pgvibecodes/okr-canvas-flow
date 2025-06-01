@@ -22,6 +22,7 @@ interface OKRFlowContainerProps {
   isAuthenticated: boolean;
   departmentFilter: string | null;
   onFilterChange: (department: string | null) => void;
+  isConnectionMode?: boolean;
 }
 
 const OKRFlowContainer: React.FC<OKRFlowContainerProps> = ({
@@ -41,12 +42,16 @@ const OKRFlowContainer: React.FC<OKRFlowContainerProps> = ({
   onAddObjective,
   isAuthenticated,
   departmentFilter,
-  onFilterChange
+  onFilterChange,
+  isConnectionMode
 }) => {
   const reactFlowWrapper = useRef(null);
 
   return (
-    <div className="h-full w-full" ref={reactFlowWrapper}>
+    <div 
+      className={`h-full w-full ${isConnectionMode ? 'cursor-crosshair' : ''}`} 
+      ref={reactFlowWrapper}
+    >
       <ReactFlow 
         nodes={nodes} 
         edges={edges} 
@@ -85,6 +90,13 @@ const OKRFlowContainer: React.FC<OKRFlowContainerProps> = ({
             onFilterChange={onFilterChange}
           />
         </Panel>
+
+        {/* Connection mode indicator */}
+        {isConnectionMode && (
+          <Panel position="top-center" className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg">
+            Connection mode active - Click on a node to connect, press ESC to cancel
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );

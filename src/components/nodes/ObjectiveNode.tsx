@@ -18,6 +18,7 @@ interface ObjectiveNodeProps {
   showPlusMenu?: boolean;
   plusMenuPosition?: { x: number; y: number };
   onClosePlusMenu?: () => void;
+  isConnectionMode?: boolean;
 }
 
 const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({ 
@@ -29,7 +30,8 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   onLinkClick,
   showPlusMenu,
   plusMenuPosition,
-  onClosePlusMenu
+  onClosePlusMenu,
+  isConnectionMode
 }) => {
   const {
     isEditing,
@@ -78,6 +80,8 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
       <Card 
         className={`border-2 border-blue-500 w-64 shadow-md cursor-pointer transition-all ${
           selected ? 'ring-2 ring-blue-300 ring-offset-2' : ''
+        } ${
+          isConnectionMode ? 'hover:ring-2 hover:ring-green-300 hover:ring-offset-2' : ''
         }`}
         onClick={handleCardClick}
       >
