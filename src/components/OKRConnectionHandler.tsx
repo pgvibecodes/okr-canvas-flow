@@ -40,8 +40,8 @@ function OKRConnectionHandler({
         onConnectionAttempt(
           sourceNode.id,
           targetNode.id,
-          sourceNode.data?.label || 'Node',
-          targetNode.data?.label || 'Node'
+          String(sourceNode.data?.label || 'Node'),
+          String(targetNode.data?.label || 'Node')
         );
         return;
       }
