@@ -13,6 +13,8 @@ import BoardShareDialog from './BoardShareDialog';
 import OKRFlowContainer from './OKRFlowContainer';
 import useDepartmentFilter from '../hooks/useDepartmentFilter';
 import useAutoSave from '../hooks/useAutoSave';
+import { useNodeInteraction } from '../hooks/useNodeInteraction';
+import ConnectionDirectionDialog from './nodes/ConnectionDirectionDialog';
 
 interface OKRBoardProps {
   isShareDialogOpen: boolean;
@@ -20,7 +22,21 @@ interface OKRBoardProps {
 }
 
 const nodeTypes = {
-  objective: ObjectiveNode,
+  objective: (props: any) => (
+    <ObjectiveNode
+      {...props}
+      selected={nodeInteraction.selectedNodeId === props.id}
+      onNodeClick={nodeInteraction.selectNode}
+      onPlusClick={nodeInteraction.openPlusMenu}
+      onLinkClick={handleLinkClick}
+      showPlusMenu={
+        nodeInteraction.plusMenuState.isOpen && 
+        nodeInteraction.plusMenuState.nodeId === props.id
+      }
+      plusMenuPosition={nodeInteraction.plusMenuState.position}
+      onClosePlusMenu={nodeInteraction.closePlusMenu}
+    />
+  ),
   keyResult: KeyResultNode
 };
 
@@ -31,6 +47,9 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  
+  // Node interaction state
+  const nodeInteraction = useNodeInteraction();
   
   // Use the board manager hook
   const {
@@ -85,6 +104,33 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     currentBoardId
   });
 
+  // Handle link click to enter connection mode
+  const handleLinkClick = useCallback((nodeId: string) => {
+    nodeInteraction.enterConnectionMode();
+    // TODO: Implement visual feedback for connection mode
+  }, [nodeInteraction]);
+
+  // Handle connection direction selection
+  const handleConnectionDirection = useCallback((direction: 'source-to-target' | 'target-to-source' | 'no-flow') => {
+    // TODO: Create the edge with appropriate styling based on direction
+    nodeInteraction.closeConnectionDialog();
+    nodeInteraction.exitConnectionMode();
+  }, [nodeInteraction]);
+
+  // Handle keyboard events
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        nodeInteraction.selectNode(null);
+        nodeInteraction.exitConnectionMode();
+        nodeInteraction.closePlusMenu();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [nodeInteraction]);
+
   // Load saved data when board changes
   useEffect(() => {
     if (currentBoardId) {
@@ -93,7 +139,6 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
           setNodes(data.nodes || []);
           setEdges(data.edges || []);
         } else {
-          // Clear existing data if no saved data exists for this board
           setNodes([]);
           setEdges([]);
         }
@@ -128,6 +173,9 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   }, []);
   
   const handleCanvasClick = useCallback(event => {
+    // Clear selection when clicking on canvas
+    nodeInteraction.selectNode(null);
+    
     // Only add a node if command/ctrl key is pressed during click
     if (event.ctrlKey || event.metaKey) {
       const reactFlowBounds = event.currentTarget.getBoundingClientRect();
@@ -138,7 +186,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       addNewObjective(position);
       setUnsavedChanges(true);
     }
-  }, [addNewObjective, reactFlowInstance, setUnsavedChanges]);
+  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, nodeInteraction]);
   
   const handleDepartmentFilterChange = useCallback((department: string | null) => {
     setDepartmentFilter(department);
@@ -178,6 +226,14 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
         isOpen={isShareDialogOpen} 
         onClose={() => setIsShareDialogOpen(false)}
         boardId={currentBoardId}
+      />
+
+      <ConnectionDirectionDialog
+        isOpen={nodeInteraction.connectionDialog.isOpen}
+        onClose={nodeInteraction.closeConnectionDialog}
+        sourceNodeLabel={nodeInteraction.connectionDialog.sourceLabel}
+        targetNodeLabel={nodeInteraction.connectionDialog.targetLabel}
+        onSelectDirection={handleConnectionDirection}
       />
     </>
   );

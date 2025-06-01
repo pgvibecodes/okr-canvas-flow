@@ -5,9 +5,32 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import useObjectiveNode from '@/hooks/useObjectiveNode';
 import ObjectiveNodeHeader from './objective/ObjectiveNodeHeader';
 import ObjectiveNodeContent from './objective/ObjectiveNodeContent';
-import ObjectiveNodeFooter from './objective/ObjectiveNodeFooter';
+import NodeActionIcons from './NodeActionIcons';
+import PlusIconMenu from './PlusIconMenu';
 
-const ObjectiveNode = ({ id, data }) => {
+interface ObjectiveNodeProps {
+  id: string;
+  data: any;
+  selected?: boolean;
+  onNodeClick?: (nodeId: string) => void;
+  onPlusClick?: (nodeId: string, position: { x: number; y: number }) => void;
+  onLinkClick?: (nodeId: string) => void;
+  showPlusMenu?: boolean;
+  plusMenuPosition?: { x: number; y: number };
+  onClosePlusMenu?: () => void;
+}
+
+const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({ 
+  id, 
+  data, 
+  selected,
+  onNodeClick,
+  onPlusClick,
+  onLinkClick,
+  showPlusMenu,
+  plusMenuPosition,
+  onClosePlusMenu
+}) => {
   const {
     isEditing,
     setIsEditing,
@@ -24,34 +47,79 @@ const ObjectiveNode = ({ id, data }) => {
     handleDelete,
   } = useObjectiveNode(id, data);
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNodeClick && !isEditing) {
+      onNodeClick(id);
+    }
+  };
+
+  const handlePlusClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const position = {
+      x: rect.right + 10,
+      y: rect.top,
+    };
+    if (onPlusClick) {
+      onPlusClick(id, position);
+    }
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onLinkClick) {
+      onLinkClick(id);
+    }
+  };
+
   return (
-    <Card className="border-2 border-blue-500 w-64 shadow-md">
-      <CardHeader className="bg-blue-50 border-b border-blue-100 p-3">
-        <ObjectiveNodeHeader
-          isEditing={isEditing}
-          label={label}
-          setLabel={setLabel}
-          handleSave={handleSave}
-          setIsEditing={setIsEditing}
-          handleDelete={handleDelete}
+    <div className="relative">
+      <Card 
+        className={`border-2 border-blue-500 w-64 shadow-md cursor-pointer transition-all ${
+          selected ? 'ring-2 ring-blue-300 ring-offset-2' : ''
+        }`}
+        onClick={handleCardClick}
+      >
+        <CardHeader className="bg-blue-50 border-b border-blue-100 p-3">
+          <ObjectiveNodeHeader
+            isEditing={isEditing}
+            label={label}
+            setLabel={setLabel}
+            handleSave={handleSave}
+            setIsEditing={setIsEditing}
+            handleDelete={handleDelete}
+          />
+        </CardHeader>
+        <CardContent className="p-3">
+          <ObjectiveNodeContent
+            isEditing={isEditing}
+            description={description}
+            setDescription={setDescription}
+            progress={progress}
+            department={department}
+            setDepartment={setDepartment}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Action Icons - only show when selected and not editing */}
+      <NodeActionIcons
+        isVisible={selected && !isEditing}
+        onPlusClick={handlePlusClick}
+        onLinkClick={handleLinkClick}
+      />
+
+      {/* Plus Menu */}
+      {showPlusMenu && plusMenuPosition && (
+        <PlusIconMenu
+          isOpen={showPlusMenu}
+          onClose={onClosePlusMenu || (() => {})}
+          onAddSubObjective={addSubObjective}
+          onAddKeyResult={addKeyResult}
+          position={plusMenuPosition}
         />
-      </CardHeader>
-      <CardContent className="p-3">
-        <ObjectiveNodeContent
-          isEditing={isEditing}
-          description={description}
-          setDescription={setDescription}
-          progress={progress}
-          department={department}
-          setDepartment={setDepartment}
-        />
-      </CardContent>
-      <CardFooter className="p-0">
-        <ObjectiveNodeFooter
-          addSubObjective={addSubObjective}
-          addKeyResult={addKeyResult}
-        />
-      </CardFooter>
+      )}
 
       {/* React Flow handles */}
       <Handle
@@ -64,7 +132,7 @@ const ObjectiveNode = ({ id, data }) => {
         position={Position.Left}
         style={{ background: '#3b82f6', width: 8, height: 8, left: -4 }}
       />
-    </Card>
+    </div>
   );
 };
 
