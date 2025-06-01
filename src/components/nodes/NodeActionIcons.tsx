@@ -4,8 +4,8 @@ import { Plus, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface NodeActionIconsProps {
-  onPlusClick: () => void;
-  onLinkClick: () => void;
+  onPlusClick: (e: React.MouseEvent) => void;
+  onLinkClick: (e: React.MouseEvent) => void;
   isVisible: boolean;
 }
 

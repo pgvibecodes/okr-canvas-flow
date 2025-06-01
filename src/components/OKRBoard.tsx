@@ -21,25 +21,6 @@ interface OKRBoardProps {
   setIsShareDialogOpen: (isOpen: boolean) => void;
 }
 
-const nodeTypes = {
-  objective: (props: any) => (
-    <ObjectiveNode
-      {...props}
-      selected={nodeInteraction.selectedNodeId === props.id}
-      onNodeClick={nodeInteraction.selectNode}
-      onPlusClick={nodeInteraction.openPlusMenu}
-      onLinkClick={handleLinkClick}
-      showPlusMenu={
-        nodeInteraction.plusMenuState.isOpen && 
-        nodeInteraction.plusMenuState.nodeId === props.id
-      }
-      plusMenuPosition={nodeInteraction.plusMenuState.position}
-      onClosePlusMenu={nodeInteraction.closePlusMenu}
-    />
-  ),
-  keyResult: KeyResultNode
-};
-
 const initialNodes = [];
 const initialEdges = [];
 
@@ -116,6 +97,26 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     nodeInteraction.closeConnectionDialog();
     nodeInteraction.exitConnectionMode();
   }, [nodeInteraction]);
+
+  // Define node types after all dependencies are available
+  const nodeTypes = {
+    objective: (props: any) => (
+      <ObjectiveNode
+        {...props}
+        selected={nodeInteraction.selectedNodeId === props.id}
+        onNodeClick={nodeInteraction.selectNode}
+        onPlusClick={nodeInteraction.openPlusMenu}
+        onLinkClick={handleLinkClick}
+        showPlusMenu={
+          nodeInteraction.plusMenuState.isOpen && 
+          nodeInteraction.plusMenuState.nodeId === props.id
+        }
+        plusMenuPosition={nodeInteraction.plusMenuState.position}
+        onClosePlusMenu={nodeInteraction.closePlusMenu}
+      />
+    ),
+    keyResult: KeyResultNode
+  };
 
   // Handle keyboard events
   useEffect(() => {
