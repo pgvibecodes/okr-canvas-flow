@@ -1,23 +1,19 @@
 
 import React from 'react';
-import { Handle, Position, useReactFlow, NodeToolbar } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Plus, Link } from 'lucide-react';
 import useObjectiveNode from '@/hooks/useObjectiveNode';
 import ObjectiveNodeHeader from './objective/ObjectiveNodeHeader';
 import ObjectiveNodeContent from './objective/ObjectiveNodeContent';
-import PlusIconMenu from './PlusIconMenu';
+import InlineActionMenu from './InlineActionMenu';
 
 interface ObjectiveNodeProps {
   id: string;
   data: any;
   selected?: boolean;
-  onPlusClick?: (nodeId: string, position: { x: number; y: number }) => void;
+  onAddKeyResult?: (nodeId: string) => void;
+  onAddSubObjective?: (nodeId: string) => void;
   onLinkClick?: (nodeId: string) => void;
-  showPlusMenu?: boolean;
-  plusMenuPosition?: { x: number; y: number };
-  onClosePlusMenu?: () => void;
   isConnectionMode?: boolean;
 }
 
@@ -25,14 +21,11 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   id, 
   data, 
   selected,
-  onPlusClick,
+  onAddKeyResult,
+  onAddSubObjective,
   onLinkClick,
-  showPlusMenu,
-  plusMenuPosition,
-  onClosePlusMenu,
   isConnectionMode
 }) => {
-  const reactFlow = useReactFlow();
   const {
     isEditing,
     setIsEditing,
@@ -49,31 +42,27 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
     handleDelete,
   } = useObjectiveNode(id, data);
 
-  const handlePlusClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log('Plus button clicked for node:', id);
-    
-    // Get the node's position in the flow
-    const node = reactFlow.getNode(id);
-    if (node && onPlusClick) {
-      // Use the node's position plus an offset for the menu
-      const position = {
-        x: node.position.x + 280, // Position to the right of the node
-        y: node.position.y,
-      };
-      onPlusClick(id, position);
+  const handleAddKeyResult = () => {
+    if (onAddKeyResult) {
+      onAddKeyResult(id);
+    } else {
+      addKeyResult();
     }
   };
 
-  const handleLinkClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log('Link button clicked for node:', id);
+  const handleAddSubObjective = () => {
+    if (onAddSubObjective) {
+      onAddSubObjective(id);
+    } else {
+      addSubObjective();
+    }
+  };
+
+  const handleLinkClick = () => {
     if (onLinkClick) {
       onLinkClick(id);
     }
   };
-
-  console.log('ObjectiveNode render:', id, 'selected:', selected, 'isEditing:', isEditing);
 
   return (
     <div className="relative">
@@ -106,38 +95,16 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
         </CardContent>
       </Card>
 
-      {/* React Flow NodeToolbar - only show when selected and not editing */}
-      <NodeToolbar isVisible={selected && !isEditing} position={Position.Top}>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0 bg-white shadow-md hover:bg-blue-50"
-            onClick={handlePlusClick}
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0 bg-white shadow-md hover:bg-blue-50"
-            onClick={handleLinkClick}
-          >
-            <Link className="h-3 w-3" />
-          </Button>
-        </div>
-      </NodeToolbar>
-
-      {/* Plus Menu - now positioned relative to the flow */}
-      {showPlusMenu && plusMenuPosition && (
-        <PlusIconMenu
-          isOpen={showPlusMenu}
-          onClose={onClosePlusMenu || (() => {})}
-          onAddSubObjective={addSubObjective}
-          onAddKeyResult={addKeyResult}
-          position={plusMenuPosition}
-        />
-      )}
+      {/* Inline Action Menu */}
+      <InlineActionMenu
+        isVisible={selected}
+        isEditing={isEditing}
+        onEdit={() => setIsEditing(true)}
+        onDelete={handleDelete}
+        onAddSubObjective={handleAddSubObjective}
+        onAddKeyResult={handleAddKeyResult}
+        onLink={handleLinkClick}
+      />
 
       {/* React Flow handles */}
       <Handle

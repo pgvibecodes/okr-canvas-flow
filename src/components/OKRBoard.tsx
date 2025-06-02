@@ -13,7 +13,7 @@ import BoardShareDialog from './BoardShareDialog';
 import OKRFlowContainer from './OKRFlowContainer';
 import useDepartmentFilter from '../hooks/useDepartmentFilter';
 import useAutoSave from '../hooks/useAutoSave';
-import { useSimpleNodeInteraction } from '../hooks/useSimpleNodeInteraction';
+import useConnectionMode from '../hooks/useConnectionMode';
 import ConnectionDirectionDialog from './nodes/ConnectionDirectionDialog';
 
 interface OKRBoardProps {
@@ -29,8 +29,8 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
-  // Simplified node interaction state
-  const nodeInteraction = useSimpleNodeInteraction();
+  // Connection mode state
+  const connectionMode = useConnectionMode();
   
   // Use the board manager hook
   const {
@@ -68,8 +68,8 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     sourceLabel: string,
     targetLabel: string
   ) => {
-    nodeInteraction.openConnectionDialog(sourceNodeId, targetNodeId, sourceLabel, targetLabel);
-  }, [nodeInteraction]);
+    connectionMode.openConnectionDialog(sourceNodeId, targetNodeId, sourceLabel, targetLabel);
+  }, [connectionMode]);
 
   // Use the connection handler
   const {
@@ -97,49 +97,55 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     currentBoardId
   });
 
-  // Handle plus menu positioning - convert flow coordinates to screen coordinates
-  const handlePlusClick = useCallback((nodeId: string, flowPosition: { x: number; y: number }) => {
-    console.log('OKRBoard handlePlusClick:', nodeId, flowPosition);
-    
-    if (reactFlowInstance) {
-      // Convert flow coordinates to screen coordinates
-      const screenPosition = reactFlowInstance.flowToScreenPosition(flowPosition);
-      nodeInteraction.openPlusMenu(nodeId, screenPosition);
+  // Handle node actions
+  const handleAddKeyResult = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      const position = {
+        x: node.position.x + 300,
+        y: node.position.y,
+      };
+      addKeyResult(nodeId, position);
     }
-  }, [nodeInteraction, reactFlowInstance]);
+  }, [nodes, addKeyResult]);
 
-  // Handle link click to enter connection mode
+  const handleAddSubObjective = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      const position = {
+        x: node.position.x + 400,
+        y: node.position.y + 100,
+      };
+      // For now, use the existing addNewObjective and create edge manually
+      addNewObjective(position);
+    }
+  }, [nodes, addNewObjective]);
+
   const handleLinkClick = useCallback((nodeId: string) => {
-    console.log('OKRBoard handleLinkClick:', nodeId);
-    nodeInteraction.enterConnectionMode();
-  }, [nodeInteraction]);
+    connectionMode.enterConnectionMode();
+  }, [connectionMode]);
 
   // Handle connection direction selection
   const handleConnectionDirection = useCallback((direction: 'source-to-target' | 'target-to-source' | 'no-flow') => {
-    const { sourceNodeId, targetNodeId } = nodeInteraction.connectionDialog;
+    const { sourceNodeId, targetNodeId } = connectionMode.connectionDialog;
     
     if (sourceNodeId && targetNodeId) {
       createDirectionalEdge(sourceNodeId, targetNodeId, direction);
     }
     
-    nodeInteraction.closeConnectionDialog();
-    nodeInteraction.exitConnectionMode();
-  }, [nodeInteraction, createDirectionalEdge]);
+    connectionMode.closeConnectionDialog();
+    connectionMode.exitConnectionMode();
+  }, [connectionMode, createDirectionalEdge]);
 
   // Define node types after all dependencies are available
   const nodeTypes = {
     objective: (props: any) => (
       <ObjectiveNode
         {...props}
-        onPlusClick={handlePlusClick}
+        onAddKeyResult={handleAddKeyResult}
+        onAddSubObjective={handleAddSubObjective}
         onLinkClick={handleLinkClick}
-        showPlusMenu={
-          nodeInteraction.plusMenuState.isOpen && 
-          nodeInteraction.plusMenuState.nodeId === props.id
-        }
-        plusMenuPosition={nodeInteraction.plusMenuState.position}
-        onClosePlusMenu={nodeInteraction.closePlusMenu}
-        isConnectionMode={nodeInteraction.isConnectionMode}
+        isConnectionMode={connectionMode.isConnectionMode}
       />
     ),
     keyResult: KeyResultNode
@@ -149,15 +155,14 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        nodeInteraction.exitConnectionMode();
-        nodeInteraction.closePlusMenu();
-        nodeInteraction.closeConnectionDialog();
+        connectionMode.exitConnectionMode();
+        connectionMode.closeConnectionDialog();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [nodeInteraction]);
+  }, [connectionMode]);
 
   // Load saved data when board changes
   useEffect(() => {
@@ -201,10 +206,8 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   }, []);
   
   const handleCanvasClick = useCallback(event => {
-    console.log('Canvas clicked');
-    // Close plus menu when clicking on canvas
-    nodeInteraction.closePlusMenu();
-    nodeInteraction.exitConnectionMode();
+    // Exit connection mode when clicking on canvas
+    connectionMode.exitConnectionMode();
     
     // Only add a node if command/ctrl key is pressed during click
     if (event.ctrlKey || event.metaKey) {
@@ -216,7 +219,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       addNewObjective(position);
       setUnsavedChanges(true);
     }
-  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, nodeInteraction]);
+  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, connectionMode]);
   
   const handleDepartmentFilterChange = useCallback((department: string | null) => {
     setDepartmentFilter(department);
@@ -250,7 +253,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
         isAuthenticated={isAuthenticated}
         departmentFilter={departmentFilter}
         onFilterChange={handleDepartmentFilterChange}
-        isConnectionMode={nodeInteraction.isConnectionMode}
+        isConnectionMode={connectionMode.isConnectionMode}
       />
       
       <BoardShareDialog 
@@ -260,10 +263,10 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       />
 
       <ConnectionDirectionDialog
-        isOpen={nodeInteraction.connectionDialog.isOpen}
-        onClose={nodeInteraction.closeConnectionDialog}
-        sourceNodeLabel={nodeInteraction.connectionDialog.sourceLabel}
-        targetNodeLabel={nodeInteraction.connectionDialog.targetLabel}
+        isOpen={connectionMode.connectionDialog.isOpen}
+        onClose={connectionMode.closeConnectionDialog}
+        sourceNodeLabel={connectionMode.connectionDialog.sourceLabel}
+        targetNodeLabel={connectionMode.connectionDialog.targetLabel}
         onSelectDirection={handleConnectionDirection}
       />
     </>
