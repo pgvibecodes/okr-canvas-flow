@@ -1,18 +1,18 @@
 
 import React from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Handle, Position, useReactFlow, NodeToolbar } from '@xyflow/react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus, Link } from 'lucide-react';
 import useObjectiveNode from '@/hooks/useObjectiveNode';
 import ObjectiveNodeHeader from './objective/ObjectiveNodeHeader';
 import ObjectiveNodeContent from './objective/ObjectiveNodeContent';
-import NodeActionIcons from './NodeActionIcons';
 import PlusIconMenu from './PlusIconMenu';
 
 interface ObjectiveNodeProps {
   id: string;
   data: any;
   selected?: boolean;
-  onNodeClick?: (nodeId: string) => void;
   onPlusClick?: (nodeId: string, position: { x: number; y: number }) => void;
   onLinkClick?: (nodeId: string) => void;
   showPlusMenu?: boolean;
@@ -25,7 +25,6 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   id, 
   data, 
   selected,
-  onNodeClick,
   onPlusClick,
   onLinkClick,
   showPlusMenu,
@@ -50,35 +49,18 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
     handleDelete,
   } = useObjectiveNode(id, data);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log('ObjectiveNode card clicked:', id, 'isEditing:', isEditing);
-    
-    if (!isEditing) {
-      // Use React Flow's built-in selection mechanism
-      reactFlow.setNodes((nodes) =>
-        nodes.map((node) => ({
-          ...node,
-          selected: node.id === id,
-        }))
-      );
-      
-      // Also call our custom handler for additional logic
-      if (onNodeClick) {
-        onNodeClick(id);
-      }
-    }
-  };
-
   const handlePlusClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('Plus button clicked for node:', id);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const position = {
-      x: rect.right + 10,
-      y: rect.top,
-    };
-    if (onPlusClick) {
+    
+    // Get the node's position in the flow
+    const node = reactFlow.getNode(id);
+    if (node && onPlusClick) {
+      // Use the node's position plus an offset for the menu
+      const position = {
+        x: node.position.x + 280, // Position to the right of the node
+        y: node.position.y,
+      };
       onPlusClick(id, position);
     }
   };
@@ -96,12 +78,11 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   return (
     <div className="relative">
       <Card 
-        className={`border-2 border-blue-500 w-64 shadow-md cursor-pointer transition-all ${
+        className={`border-2 border-blue-500 w-64 shadow-md transition-all ${
           selected ? 'ring-2 ring-blue-300 ring-offset-2' : ''
         } ${
           isConnectionMode ? 'hover:ring-2 hover:ring-green-300 hover:ring-offset-2' : ''
         }`}
-        onClick={handleCardClick}
       >
         <CardHeader className="bg-blue-50 border-b border-blue-100 p-3">
           <ObjectiveNodeHeader
@@ -125,14 +106,29 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
         </CardContent>
       </Card>
 
-      {/* Action Icons - only show when selected and not editing */}
-      <NodeActionIcons
-        isVisible={selected && !isEditing}
-        onPlusClick={handlePlusClick}
-        onLinkClick={handleLinkClick}
-      />
+      {/* React Flow NodeToolbar - only show when selected and not editing */}
+      <NodeToolbar isVisible={selected && !isEditing} position="top">
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 p-0 bg-white shadow-md hover:bg-blue-50"
+            onClick={handlePlusClick}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 p-0 bg-white shadow-md hover:bg-blue-50"
+            onClick={handleLinkClick}
+          >
+            <Link className="h-3 w-3" />
+          </Button>
+        </div>
+      </NodeToolbar>
 
-      {/* Plus Menu */}
+      {/* Plus Menu - now positioned relative to the flow */}
       {showPlusMenu && plusMenuPosition && (
         <PlusIconMenu
           isOpen={showPlusMenu}

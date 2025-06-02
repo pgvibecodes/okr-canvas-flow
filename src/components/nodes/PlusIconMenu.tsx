@@ -28,12 +28,12 @@ const PlusIconMenu: React.FC<PlusIconMenuProps> = ({
         onClick={onClose}
       />
       
-      {/* Menu */}
+      {/* Menu - using fixed positioning to avoid coordinate conflicts */}
       <Card 
-        className="absolute z-50 p-2 shadow-lg border bg-white min-w-32"
+        className="fixed z-50 p-2 shadow-lg border bg-white min-w-32"
         style={{
-          left: position.x,
-          top: position.y,
+          left: `${position.x}px`,
+          top: `${position.y}px`,
         }}
       >
         <div className="flex flex-col gap-1">

@@ -13,7 +13,7 @@ import BoardShareDialog from './BoardShareDialog';
 import OKRFlowContainer from './OKRFlowContainer';
 import useDepartmentFilter from '../hooks/useDepartmentFilter';
 import useAutoSave from '../hooks/useAutoSave';
-import { useNodeInteraction } from '../hooks/useNodeInteraction';
+import { useSimpleNodeInteraction } from '../hooks/useSimpleNodeInteraction';
 import ConnectionDirectionDialog from './nodes/ConnectionDirectionDialog';
 
 interface OKRBoardProps {
@@ -29,8 +29,8 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
-  // Node interaction state
-  const nodeInteraction = useNodeInteraction();
+  // Simplified node interaction state
+  const nodeInteraction = useSimpleNodeInteraction();
   
   // Use the board manager hook
   const {
@@ -97,13 +97,16 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     currentBoardId
   });
 
-  // Handle node selection - sync with React Flow's built-in selection
-  const handleNodeClick = useCallback((nodeId: string) => {
-    console.log('OKRBoard handleNodeClick:', nodeId);
-    // Update our custom state to match React Flow's selection
-    nodeInteraction.selectNode(nodeId);
-    nodeInteraction.closePlusMenu();
-  }, [nodeInteraction]);
+  // Handle plus menu positioning - convert flow coordinates to screen coordinates
+  const handlePlusClick = useCallback((nodeId: string, flowPosition: { x: number; y: number }) => {
+    console.log('OKRBoard handlePlusClick:', nodeId, flowPosition);
+    
+    if (reactFlowInstance) {
+      // Convert flow coordinates to screen coordinates
+      const screenPosition = reactFlowInstance.flowToScreenPosition(flowPosition);
+      nodeInteraction.openPlusMenu(nodeId, screenPosition);
+    }
+  }, [nodeInteraction, reactFlowInstance]);
 
   // Handle link click to enter connection mode
   const handleLinkClick = useCallback((nodeId: string) => {
@@ -123,25 +126,12 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
     nodeInteraction.exitConnectionMode();
   }, [nodeInteraction, createDirectionalEdge]);
 
-  // Sync React Flow selection with our custom state
-  useEffect(() => {
-    const selectedNode = nodes.find(node => node.selected);
-    const selectedNodeId = selectedNode?.id || null;
-    
-    if (selectedNodeId !== nodeInteraction.selectedNodeId) {
-      console.log('Syncing selection state:', selectedNodeId);
-      nodeInteraction.selectNode(selectedNodeId);
-    }
-  }, [nodes, nodeInteraction]);
-
   // Define node types after all dependencies are available
   const nodeTypes = {
     objective: (props: any) => (
       <ObjectiveNode
         {...props}
-        selected={props.selected}
-        onNodeClick={handleNodeClick}
-        onPlusClick={nodeInteraction.openPlusMenu}
+        onPlusClick={handlePlusClick}
         onLinkClick={handleLinkClick}
         showPlusMenu={
           nodeInteraction.plusMenuState.isOpen && 
@@ -159,7 +149,6 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        nodeInteraction.selectNode(null);
         nodeInteraction.exitConnectionMode();
         nodeInteraction.closePlusMenu();
         nodeInteraction.closeConnectionDialog();
@@ -213,12 +202,9 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   
   const handleCanvasClick = useCallback(event => {
     console.log('Canvas clicked');
-    // Clear selection when clicking on canvas
-    nodeInteraction.selectNode(null);
+    // Close plus menu when clicking on canvas
+    nodeInteraction.closePlusMenu();
     nodeInteraction.exitConnectionMode();
-    
-    // Clear React Flow selection
-    setNodes(nodes => nodes.map(node => ({ ...node, selected: false })));
     
     // Only add a node if command/ctrl key is pressed during click
     if (event.ctrlKey || event.metaKey) {
@@ -230,7 +216,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       addNewObjective(position);
       setUnsavedChanges(true);
     }
-  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, nodeInteraction, setNodes]);
+  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, nodeInteraction]);
   
   const handleDepartmentFilterChange = useCallback((department: string | null) => {
     setDepartmentFilter(department);
