@@ -107,7 +107,7 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
       </Card>
 
       {/* React Flow NodeToolbar - only show when selected and not editing */}
-      <NodeToolbar isVisible={selected && !isEditing} position="top">
+      <NodeToolbar isVisible={selected && !isEditing} position={Position.Top}>
         <div className="flex gap-1">
           <Button
             size="sm"
