@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import useObjectiveNode from '@/hooks/useObjectiveNode';
 import ObjectiveNodeHeader from './objective/ObjectiveNodeHeader';
@@ -33,6 +33,7 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   onClosePlusMenu,
   isConnectionMode
 }) => {
+  const reactFlow = useReactFlow();
   const {
     isEditing,
     setIsEditing,
@@ -51,13 +52,27 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onNodeClick && !isEditing) {
-      onNodeClick(id);
+    console.log('ObjectiveNode card clicked:', id, 'isEditing:', isEditing);
+    
+    if (!isEditing) {
+      // Use React Flow's built-in selection mechanism
+      reactFlow.setNodes((nodes) =>
+        nodes.map((node) => ({
+          ...node,
+          selected: node.id === id,
+        }))
+      );
+      
+      // Also call our custom handler for additional logic
+      if (onNodeClick) {
+        onNodeClick(id);
+      }
     }
   };
 
   const handlePlusClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Plus button clicked for node:', id);
     const rect = e.currentTarget.getBoundingClientRect();
     const position = {
       x: rect.right + 10,
@@ -70,10 +85,13 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
 
   const handleLinkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Link button clicked for node:', id);
     if (onLinkClick) {
       onLinkClick(id);
     }
   };
+
+  console.log('ObjectiveNode render:', id, 'selected:', selected, 'isEditing:', isEditing);
 
   return (
     <div className="relative">
