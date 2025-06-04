@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import React, { useState, useCallback } from 'react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import useObjectiveNode from '@/hooks/useObjectiveNode';
 import ObjectiveNodeHeader from './objective/ObjectiveNodeHeader';
@@ -26,6 +26,8 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
   onLinkClick,
   isConnectionMode
 }) => {
+  const { setNodes } = useReactFlow();
+  const [showMenu, setShowMenu] = useState(false);
   const {
     isEditing,
     setIsEditing,
@@ -41,6 +43,21 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
     handleSave,
     handleDelete,
   } = useObjectiveNode(id, data);
+
+  const handleCardClick = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // Select this node in React Flow
+    setNodes((nodes) => 
+      nodes.map(node => ({
+        ...node,
+        selected: node.id === id
+      }))
+    );
+    
+    // Show our local menu
+    setShowMenu(true);
+  }, [id, setNodes]);
 
   const handleAddKeyResult = () => {
     if (onAddKeyResult) {
@@ -64,14 +81,18 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
     }
   };
 
+  // Menu is visible when either React Flow says it's selected OR our local state says so
+  const isMenuVisible = selected || showMenu;
+
   return (
     <div className="relative">
       <Card 
-        className={`border-2 border-blue-500 w-64 shadow-md transition-all ${
+        className={`border-2 border-blue-500 w-64 shadow-md transition-all cursor-pointer ${
           selected ? 'ring-2 ring-blue-300 ring-offset-2' : ''
         } ${
           isConnectionMode ? 'hover:ring-2 hover:ring-green-300 hover:ring-offset-2' : ''
         }`}
+        onClick={handleCardClick}
       >
         <CardHeader className="bg-blue-50 border-b border-blue-100 p-3">
           <ObjectiveNodeHeader
@@ -95,9 +116,9 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
         </CardContent>
       </Card>
 
-      {/* Inline Action Menu - show when selected OR not editing */}
+      {/* Inline Action Menu - show when selected or locally visible */}
       <InlineActionMenu
-        isVisible={selected || false}
+        isVisible={isMenuVisible && !isEditing}
         isEditing={isEditing}
         onEdit={() => setIsEditing(true)}
         onDelete={handleDelete}

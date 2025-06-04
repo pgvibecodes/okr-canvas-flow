@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -195,7 +194,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       }
     });
   }, [nodes, edges, handleBoardChange, setNodes, setEdges]);
-
+  
   const onDragOver = useCallback(event => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -206,6 +205,14 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
   }, []);
   
   const handleCanvasClick = useCallback(event => {
+    // Clear all node selections when clicking on canvas
+    setNodes((nodes) => 
+      nodes.map(node => ({
+        ...node,
+        selected: false
+      }))
+    );
+    
     // Exit connection mode when clicking on canvas
     connectionMode.exitConnectionMode();
     
@@ -219,7 +226,7 @@ const OKRBoard: React.FC<OKRBoardProps> = ({ isShareDialogOpen, setIsShareDialog
       addNewObjective(position);
       setUnsavedChanges(true);
     }
-  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, connectionMode]);
+  }, [addNewObjective, reactFlowInstance, setUnsavedChanges, connectionMode, setNodes]);
   
   const handleDepartmentFilterChange = useCallback((department: string | null) => {
     setDepartmentFilter(department);
