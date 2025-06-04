@@ -95,9 +95,9 @@ const ObjectiveNode: React.FC<ObjectiveNodeProps> = ({
         </CardContent>
       </Card>
 
-      {/* Inline Action Menu */}
+      {/* Inline Action Menu - show when selected OR not editing */}
       <InlineActionMenu
-        isVisible={selected}
+        isVisible={selected || false}
         isEditing={isEditing}
         onEdit={() => setIsEditing(true)}
         onDelete={handleDelete}
